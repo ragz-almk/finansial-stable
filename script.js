@@ -523,4 +523,130 @@ if (toggleRuleBtn && ruleContainer) {
   });
 }
 
+// ==========================================
+// FITUR AI FINANCIAL ADVISOR (GEMINI)
+// ==========================================
+
+// Ganti dengan API Key dari Google AI Studio milikmu
+const GEMINI_API_KEY = "AIzaSyAUGMyjx5EZD4oceuaIq8LYpMjkeHd6nJQ"; 
+
+const modalAI = document.getElementById('modalAI');
+const btnOpenAI = document.getElementById('btnOpenAI');
+const btnCloseAI = document.getElementById('btnCloseAI');
+const btnAnalyzeAI = document.getElementById('btnAnalyzeAI');
+const aiLoading = document.getElementById('aiLoading');
+const aiResponse = document.getElementById('aiResponse');
+
+// Buka/Tutup Modal AI
+if (btnOpenAI) {
+  btnOpenAI.addEventListener('click', () => {
+    modalAI.classList.remove('hidden');
+    modalAI.classList.add('flex');
+    // Reset tampilan
+    aiResponse.classList.add('hidden');
+    aiLoading.classList.add('hidden');
+    aiResponse.innerHTML = '';
+  });
+}
+
+if (btnCloseAI) {
+  btnCloseAI.addEventListener('click', () => {
+    modalAI.classList.add('hidden');
+    modalAI.classList.remove('flex');
+  });
+}
+
+// Fungsi Analisis AI
+if (btnAnalyzeAI) {
+  btnAnalyzeAI.addEventListener('click', async () => {
+    // 1. Ambil bulan yang sedang dipilih
+    const selectedMonth = document.getElementById('monthFilter').value; 
+    
+    // 2. Filter transaksi HANYA untuk bulan ini
+    const monthTxns = transactions.filter(t => t.date.substring(0, 7) === selectedMonth);
+    
+    // 3. Hitung ringkasan
+    let totalMasuk = 0;
+    let totalKeluar = 0;
+    let rincianKategori = {};
+
+    monthTxns.forEach(t => {
+      if (t.type === 'in') totalMasuk += t.amount;
+      else if (t.type === 'out') {
+        totalKeluar += t.amount;
+        rincianKategori[t.category] = (rincianKategori[t.category] || 0) + t.amount;
+      }
+    });
+
+    // Ubah rincian kategori jadi teks
+    let teksKategori = "";
+    for (const [kat, nom] of Object.entries(rincianKategori)) {
+      teksKategori += `- ${kat}: Rp ${formatRp(nom)}\n`;
+    }
+
+    // 4. Buat Prompt (Instruksi + Kepribadian AI)
+    // Silakan ubah bagian "Kamu adalah..." sesuai dengan kepribadian yang Anda inginkan!
+    const promptData = `
+      Kamu adalah Xylia seorang penasihat keuangan yang cerdas, agak sarkas, tapi sangat peduli. Kamu suka memberikan komentar yang menohok namun membangun. Gunakan bahasa Indonesia yang santai (gunakan panggilan Anda ke pada user).
+      
+      Berikut adalah data keuangan klienmu untuk bulan ${selectedMonth}:
+      Total Pemasukan: Rp ${formatRp(totalMasuk)}
+      Total Pengeluaran: Rp ${formatRp(totalKeluar)}
+      Sisa Uang Bulan Ini: Rp ${formatRp(totalMasuk - totalKeluar)}
+      
+      Rincian Pengeluaran:
+      ${teksKategori || "- Tidak ada pengeluaran"}
+
+      Tolong analisis data di atas. 
+      1. Beri komentar tentang sisa uangnya.
+      2. Beri kritik/pujian pada kategori pengeluaran terbesarnya.
+      3. Beri 1 saran singkat untuk bulan depan.
+      Jangan gunakan format markdown berlebihan, gunakan paragraf biasa saja.
+    `;
+
+    // 5. Tampilkan UI Loading
+    aiResponse.classList.add('hidden');
+    aiLoading.classList.remove('hidden');
+    btnAnalyzeAI.disabled = true;
+    btnAnalyzeAI.classList.add('opacity-50', 'cursor-not-allowed');
+
+    try {
+      // 6. Panggil Google Gemini API
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: promptData }]
+          }]
+        })
+      });
+
+      if (!response.ok) throw new Error("Gagal terhubung ke AI");
+
+      const data = await response.json();
+      
+      // Ambil teks balasan dari JSON Google
+      const replyText = data.candidates[0].content.parts[0].text;
+
+      // 7. Tampilkan hasil
+      aiLoading.classList.add('hidden');
+      aiResponse.classList.remove('hidden');
+      aiResponse.innerText = replyText;
+
+    } catch (error) {
+      console.error(error);
+      aiLoading.classList.add('hidden');
+      aiResponse.classList.remove('hidden');
+      aiResponse.innerText = "Duh, AI-nya lagi sibuk ngitung duit negara. Coba lagi nanti ya! (" + error.message + ")";
+    } finally {
+      // Kembalikan tombol ke keadaan semula
+      btnAnalyzeAI.disabled = false;
+      btnAnalyzeAI.classList.remove('opacity-50', 'cursor-not-allowed');
+      lucide.createIcons(); // Refresh icon just in case
+    }
+  });
+}
 
