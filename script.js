@@ -1,7 +1,7 @@
 // script.js
 
 // ==========================================
-// 1. IMPORT FIREBASE (Menggunakan jalur CDN untuk Vanilla JS)
+// 1. IMPORT FIREBASE AUTH & FIRESTORE
 // ==========================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { 
@@ -11,12 +11,24 @@ import {
   onAuthStateChanged, 
   signOut 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-// (Analytics tidak wajib untuk saat ini, jadi kita lewati agar kode lebih bersih)
+
+// Import modul Firestore untuk Database
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  onSnapshot, 
+  deleteDoc, 
+  doc, 
+  query, 
+  where 
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // ==========================================
 // 2. KONFIGURASI FIREBASE ANDA
 // ==========================================
 const firebaseConfig = {
+  // PASTIKAN MENGGUNAKAN API KEY MILIK ANDA DI SINI
   apiKey: "AIzaSyDdoA3vMmk46N5DTwMyvN3Ck4ty8QRcN-E",
   authDomain: "my-finansial-53830.firebaseapp.com",
   projectId: "my-finansial-53830",
@@ -26,36 +38,35 @@ const firebaseConfig = {
   measurementId: "G-MGNH4N4QDP"
 };
 
-// Inisialisasi Aplikasi Firebase dan Autentikasi
+// Inisialisasi Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+const db = getFirestore(app); // Inisialisasi Database Firestore
 
 // ==========================================
-// 3. LOGIKA AUTENTIKASI (LOGIN & LOGOUT)
+// 3. LOGIKA AUTENTIKASI & DATABASE LISTENER
 // ==========================================
-let currentUser = null; // Menyimpan data user yang sedang login
+let currentUser = null; 
+let transactions = []; // Sekarang array transaksi dimulai dari kosong
+let unsubscribeSnapshot = null; // Untuk menghentikan pendengar data saat logout
 
-// Ambil elemen DOM untuk Login (Pastikan Anda sudah mengubah index.html sesuai panduan sebelumnya)
 const loginScreen = document.getElementById('loginScreen');
 const appScreen = document.getElementById('appScreen');
 const btnLogin = document.getElementById('btnLogin');
 const btnLogout = document.getElementById('btnLogout');
 const userNameDisplay = document.getElementById('userNameDisplay');
 
-// Fungsi saat tombol "Login dengan Google" diklik
 if (btnLogin) {
   btnLogin.addEventListener('click', async () => {
     try {
       await signInWithPopup(auth, provider);
     } catch (error) {
-      console.error("Gagal Login:", error);
       alert("Terjadi kesalahan saat login: " + error.message);
     }
   });
 }
 
-// Fungsi saat tombol "Logout" diklik
 if (btnLogout) {
   btnLogout.addEventListener('click', async () => {
     try {
@@ -69,42 +80,49 @@ if (btnLogout) {
 // Observer: Memantau apakah user sedang login atau tidak
 onAuthStateChanged(auth, (user) => {
   if (user) {
-    // --- JIKA USER BERHASIL LOGIN ---
     currentUser = user;
-    
-    // Tampilkan nama user di header
     if (userNameDisplay) userNameDisplay.innerText = user.displayName;
     
-    // Pindah ke layar aplikasi
     if (loginScreen) loginScreen.classList.add('hidden');
     if (appScreen) appScreen.classList.remove('hidden');
     
-    // Jalankan aplikasi keuangan
-    renderApp(); 
-    lucide.createIcons();
-  } else {
-    // --- JIKA USER BELUM LOGIN / LOGOUT ---
-    currentUser = null;
+    // PANGGIL DATA DARI FIRESTORE SECARA REALTIME
+    loadDataFromFirestore(user.uid);
     
-    // Kembali ke layar login
+  } else {
+    currentUser = null;
+    transactions = []; // Kosongkan data saat logout
+    
+    // Hentikan pendengar data realtime jika ada
+    if (unsubscribeSnapshot) unsubscribeSnapshot();
+    
     if (loginScreen) loginScreen.classList.remove('hidden');
     if (appScreen) appScreen.classList.add('hidden');
   }
 });
 
-
-// ==========================================
-// 4. KODE APLIKASI FINANSIAL STABLE (KODE LAMA ANDA)
-// ==========================================
-
-// --- STATE MANAGER ---
-let transactions = [
-  { id: 1, date: '2026-03-01', note: 'Gaji Bulanan', method: 'BCA', category: 'Gaji', type: 'in', amount: 10000000 },
-  { id: 2, date: '2026-03-02', note: 'Sewa Apartemen', method: 'BCA', category: 'Tagihan', type: 'out', amount: 3000000 },
-  { id: 3, date: '2026-03-03', note: 'Makan Siang', method: 'Cash', category: 'Makanan & Minuman', type: 'out', amount: 50000 },
-  { id: 4, date: '2026-03-04', note: 'Top up Dana', method: 'Dana', category: 'Lainnya', type: 'in', amount: 500000 },
-];
+// FUNGSI BARU: Mengambil data khusus untuk user yang sedang login
+function loadDataFromFirestore(userId) {
+  // Buat query: "Ambil data dari koleksi 'transactions' di mana 'userId' sama dengan punya saya"
+  const q = query(collection(db, "transactions"), where("userId", "==", userId));
   
+  // onSnapshot akan mendengarkan perubahan data secara langsung (real-time)
+  unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+    // Ubah data dari Firebase menjadi array yang bisa kita baca
+    transactions = snapshot.docs.map(doc => ({
+      id: doc.id, // ID unik dari dokumen Firestore
+      ...doc.data() // Isi datanya (note, amount, date, dll)
+    }));
+    
+    // Gambar ulang layar setiap kali data selesai diambil / berubah
+    renderApp(); 
+  });
+}
+
+
+// ==========================================
+// 4. KODE APLIKASI FINANSIAL STABLE
+// ==========================================
 const budgets = {
   'Makanan & Minuman': 2000000,
   'Transportasi': 1000000,
@@ -113,7 +131,6 @@ const budgets = {
   'Hiburan': 500000,
 };
   
-// Ambil elemen DOM Aplikasi
 const monthFilter = document.getElementById('monthFilter');
 const tableFilter = document.getElementById('tableFilter');
 const saldoAwalEl = document.getElementById('saldoAwal');
@@ -123,19 +140,16 @@ const saldoAkhirEl = document.getElementById('saldoAkhir');
 const transactionBody = document.getElementById('transactionBody');
 const budgetContainer = document.getElementById('budgetContainer');
 
-// Helper Format Uang
 const formatRp = (num) => new Intl.NumberFormat('id-ID').format(num);
 
-// --- INISIALISASI BULAN ---
 const today = new Date();
 const currentYearMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 if (monthFilter) monthFilter.value = currentYearMonth;
 const formDateEl = document.getElementById('formDate');
 if (formDateEl) formDateEl.value = today.toISOString().split('T')[0];
 
-// --- FUNGSI RENDER UTAMA ---
 function renderApp() {
-  if (!monthFilter || !tableFilter) return; // Mencegah error jika dipanggil sebelum login
+  if (!monthFilter || !tableFilter) return; 
 
   const selectedMonth = monthFilter.value; 
   const selectedFilter = tableFilter.value; 
@@ -147,7 +161,6 @@ function renderApp() {
 
   let monthTransactions = [];
 
-  // 1. Kalkulasi Logika Keuangan & Kumpulkan Data Bulan Ini
   transactions.forEach(t => {
     const tMonth = t.date.substring(0, 7); 
 
@@ -168,19 +181,16 @@ function renderApp() {
 
   let saldoAkhir = saldoAwal + currentIncome - currentExpense;
 
-  // Update DOM Text Kartu Summary
   saldoAwalEl.innerText = `Rp ${formatRp(saldoAwal)}`;
   pemasukanEl.innerText = `Rp ${formatRp(currentIncome)}`;
   pengeluaranEl.innerText = `Rp ${formatRp(currentExpense)}`;
   saldoAkhirEl.innerText = `Rp ${formatRp(saldoAkhir)}`;
 
-  // 2. Logika Filter Tabel
   let tableData = monthTransactions;
   if (selectedFilter !== 'all') {
     tableData = monthTransactions.filter(t => t.type === selectedFilter);
   }
 
-  // 3. Render Tabel
   transactionBody.innerHTML = '';
   if (tableData.length === 0) {
     transactionBody.innerHTML = `<tr><td colSpan="6" class="px-6 py-12 text-center text-zinc-500 italic">Tidak ada transaksi yang sesuai.</td></tr>`;
@@ -189,6 +199,7 @@ function renderApp() {
     
     tableData.forEach(t => {
       const dateStr = new Date(t.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+      // Perhatikan parameter deleteTransaction sekarang menggunakan kutipan karena ID dari Firebase berupa string (huruf+angka acak)
       const row = `
         <tr class="hover:bg-zinc-800/30 transition-colors group">
           <td class="px-6 py-4 text-sm whitespace-nowrap">${dateStr}</td>
@@ -203,7 +214,7 @@ function renderApp() {
             ${t.type === 'in' ? '+' : '-'} Rp ${formatRp(t.amount)}
           </td>
           <td class="px-6 py-4 text-center">
-            <button onclick="deleteTransaction(${t.id})" class="text-zinc-600 hover:text-red-500 transition-colors">
+            <button onclick="deleteTransaction('${t.id}')" class="text-zinc-600 hover:text-red-500 transition-colors">
               <i data-lucide="trash-2" class="w-4 h-4"></i>
             </button>
           </td>
@@ -213,7 +224,6 @@ function renderApp() {
     });
   }
 
-  // Render Budget
   budgetContainer.innerHTML = '';
   Object.entries(budgets).forEach(([cat, budgetAmount]) => {
     const actual = categoryExpenses[cat] || 0;
@@ -242,17 +252,23 @@ function renderApp() {
   lucide.createIcons();
 }
   
-// --- EVENT LISTENERS ---
 if (monthFilter) monthFilter.addEventListener('change', renderApp);
 if (tableFilter) tableFilter.addEventListener('change', renderApp);
 
-// Hapus Transaksi
-window.deleteTransaction = (id) => {
-  transactions = transactions.filter(t => t.id !== id);
-  renderApp();
+// MENGHAPUS DATA DARI FIRESTORE
+window.deleteTransaction = async (id) => {
+  if (confirm("Apakah Anda yakin ingin menghapus transaksi ini?")) {
+    try {
+      // Gunakan deleteDoc untuk menghapus berdasarkan ID dokumen
+      await deleteDoc(doc(db, "transactions", id));
+      // Kita tidak perlu memanggil renderApp() di sini, karena onSnapshot di atas akan mendeteksi perubahan dan otomatis me-render ulang!
+    } catch (error) {
+      console.error("Gagal menghapus data: ", error);
+      alert("Gagal menghapus transaksi.");
+    }
+  }
 };
 
-// Logika Modal & Form
 const modal = document.getElementById('modal');
 const btnOpenModal = document.getElementById('btnOpenModal');
 const btnCloseModal = document.getElementById('btnCloseModal');
@@ -298,26 +314,35 @@ if (btnTypeOut) {
   });
 }
 
+// MENYIMPAN DATA BARU KE FIRESTORE
 if (transactionForm) {
-  transactionForm.addEventListener('submit', (e) => {
+  transactionForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
+    // Siapkan objek data yang mau disimpan
     const newTransaction = {
-      id: Date.now(),
+      userId: currentUser.uid, // Sangat Penting: Menandai ini milik siapa
       type: formType.value,
       date: document.getElementById('formDate').value,
       amount: parseFloat(document.getElementById('formAmount').value),
       note: document.getElementById('formNote').value,
       method: document.getElementById('formMethod').value,
-      category: document.getElementById('formCategory').value
+      category: document.getElementById('formCategory').value,
+      timestamp: new Date().toISOString() // Untuk mencatat kapan diinput
     };
   
-    transactions.push(newTransaction);
-    
-    transactionForm.reset();
-    document.getElementById('formDate').value = new Date().toISOString().split('T')[0];
-    btnCloseModal.click();
-    
-    renderApp();
+    try {
+      // Gunakan addDoc untuk menyimpan ke koleksi "transactions"
+      await addDoc(collection(db, "transactions"), newTransaction);
+      
+      // Reset form dan tutup modal setelah berhasil
+      transactionForm.reset();
+      document.getElementById('formDate').value = new Date().toISOString().split('T')[0];
+      btnCloseModal.click();
+      
+    } catch (error) {
+      console.error("Gagal menyimpan transaksi: ", error);
+      alert("Gagal menyimpan data ke cloud. Pastikan internet Anda lancar.");
+    }
   });
 }
