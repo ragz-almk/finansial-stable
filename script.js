@@ -1,35 +1,18 @@
 // script.js
 
-// ==========================================
-// 1. IMPORT FIREBASE AUTH & FIRESTORE
-// ==========================================
+// 1. IMPORT FIREBASE AUTH & FIRESTORE (Tambahkan updateDoc)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { 
-  getAuth, 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  onAuthStateChanged, 
-  signOut 
+  getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-// Import modul Firestore untuk Database
 import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  onSnapshot, 
-  deleteDoc, 
-  doc, 
-  query, 
-  where 
+  getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, where, updateDoc 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-// ==========================================
 // 2. KONFIGURASI FIREBASE ANDA
-// ==========================================
 const firebaseConfig = {
-  // PASTIKAN MENGGUNAKAN API KEY MILIK ANDA DI SINI
-  apiKey: "AIzaSyDdoA3vMmk46N5DTwMyvN3Ck4ty8QRcN-E",
+  apiKey: "AIzaSyDdoA3vMmk46N5DTwMyvN3Ck4ty8QRcN-E", // Pastikan API Key Anda benar
   authDomain: "my-finansial-53830.firebaseapp.com",
   projectId: "my-finansial-53830",
   storageBucket: "my-finansial-53830.firebasestorage.app",
@@ -38,18 +21,15 @@ const firebaseConfig = {
   measurementId: "G-MGNH4N4QDP"
 };
 
-// Inisialisasi Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
-const db = getFirestore(app); // Inisialisasi Database Firestore
+const db = getFirestore(app);
 
-// ==========================================
 // 3. LOGIKA AUTENTIKASI & DATABASE LISTENER
-// ==========================================
 let currentUser = null; 
-let transactions = []; // Sekarang array transaksi dimulai dari kosong
-let unsubscribeSnapshot = null; // Untuk menghentikan pendengar data saat logout
+let transactions = []; 
+let unsubscribeSnapshot = null; 
 
 const loginScreen = document.getElementById('loginScreen');
 const appScreen = document.getElementById('appScreen');
@@ -59,76 +39,48 @@ const userNameDisplay = document.getElementById('userNameDisplay');
 
 if (btnLogin) {
   btnLogin.addEventListener('click', async () => {
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      alert("Terjadi kesalahan saat login: " + error.message);
-    }
+    try { await signInWithPopup(auth, provider); } 
+    catch (error) { alert("Terjadi kesalahan saat login: " + error.message); }
   });
 }
 
 if (btnLogout) {
   btnLogout.addEventListener('click', async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error("Gagal Logout:", error);
-    }
+    try { await signOut(auth); } catch (error) { console.error("Gagal Logout:", error); }
   });
 }
 
-// Observer: Memantau apakah user sedang login atau tidak
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUser = user;
     if (userNameDisplay) userNameDisplay.innerText = user.displayName;
-    
     if (loginScreen) loginScreen.classList.add('hidden');
     if (appScreen) appScreen.classList.remove('hidden');
-    
-    // PANGGIL DATA DARI FIRESTORE SECARA REALTIME
     loadDataFromFirestore(user.uid);
-    
   } else {
     currentUser = null;
-    transactions = []; // Kosongkan data saat logout
-    
-    // Hentikan pendengar data realtime jika ada
+    transactions = [];
     if (unsubscribeSnapshot) unsubscribeSnapshot();
-    
     if (loginScreen) loginScreen.classList.remove('hidden');
     if (appScreen) appScreen.classList.add('hidden');
   }
 });
 
-// FUNGSI BARU: Mengambil data khusus untuk user yang sedang login
 function loadDataFromFirestore(userId) {
-  // Buat query: "Ambil data dari koleksi 'transactions' di mana 'userId' sama dengan punya saya"
   const q = query(collection(db, "transactions"), where("userId", "==", userId));
-  
-  // onSnapshot akan mendengarkan perubahan data secara langsung (real-time)
   unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
-    // Ubah data dari Firebase menjadi array yang bisa kita baca
     transactions = snapshot.docs.map(doc => ({
-      id: doc.id, // ID unik dari dokumen Firestore
-      ...doc.data() // Isi datanya (note, amount, date, dll)
+      id: doc.id,
+      ...doc.data()
     }));
-    
-    // Gambar ulang layar setiap kali data selesai diambil / berubah
     renderApp(); 
   });
 }
 
-
-// ==========================================
 // 4. KODE APLIKASI FINANSIAL STABLE
-// ==========================================
 const budgets = {
-  'Makanan & Minuman': 2000000,
-  'Transportasi': 1000000,
-  'Belanja': 1500000,
-  'Tagihan': 3500000,
-  'Hiburan': 500000,
+  'Makanan & Minuman': 2000000, 'Transportasi': 1000000, 'Belanja': 1500000,
+  'Tagihan': 3500000, 'Hiburan': 500000,
 };
   
 const monthFilter = document.getElementById('monthFilter');
@@ -139,6 +91,19 @@ const pengeluaranEl = document.getElementById('pengeluaran');
 const saldoAkhirEl = document.getElementById('saldoAkhir');
 const transactionBody = document.getElementById('transactionBody');
 const budgetContainer = document.getElementById('budgetContainer');
+
+// Elemen DOM untuk Form & Edit
+const modal = document.getElementById('modal');
+const btnOpenModal = document.getElementById('btnOpenModal');
+const btnCloseModal = document.getElementById('btnCloseModal');
+const transactionForm = document.getElementById('transactionForm');
+const btnTypeIn = document.getElementById('btnTypeIn');
+const btnTypeOut = document.getElementById('btnTypeOut');
+const formType = document.getElementById('formType');
+const optGaji = document.getElementById('optGaji');
+const editTransactionId = document.getElementById('editTransactionId');
+const modalTitle = document.getElementById('modalTitle');
+const btnSubmitForm = document.getElementById('btnSubmitForm');
 
 const formatRp = (num) => new Intl.NumberFormat('id-ID').format(num);
 
@@ -158,33 +123,27 @@ function renderApp() {
   let currentIncome = 0;
   let currentExpense = 0;
   let categoryExpenses = {};
-
   let monthTransactions = [];
 
   transactions.forEach(t => {
     const tMonth = t.date.substring(0, 7); 
-
     if (tMonth < selectedMonth) {
       if (t.type === 'in') saldoAwal += t.amount;
       else saldoAwal -= t.amount;
     } else if (tMonth === selectedMonth) {
       monthTransactions.push(t);
-      
-      if (t.type === 'in') {
-        currentIncome += t.amount;
-      } else {
+      if (t.type === 'in') currentIncome += t.amount;
+      else {
         currentExpense += t.amount;
         categoryExpenses[t.category] = (categoryExpenses[t.category] || 0) + t.amount;
       }
     }
   });
 
-  let saldoAkhir = saldoAwal + currentIncome - currentExpense;
-
   saldoAwalEl.innerText = `Rp ${formatRp(saldoAwal)}`;
   pemasukanEl.innerText = `Rp ${formatRp(currentIncome)}`;
   pengeluaranEl.innerText = `Rp ${formatRp(currentExpense)}`;
-  saldoAkhirEl.innerText = `Rp ${formatRp(saldoAkhir)}`;
+  saldoAkhirEl.innerText = `Rp ${formatRp(saldoAwal + currentIncome - currentExpense)}`;
 
   let tableData = monthTransactions;
   if (selectedFilter !== 'all') {
@@ -199,7 +158,6 @@ function renderApp() {
     
     tableData.forEach(t => {
       const dateStr = new Date(t.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
-      // Perhatikan parameter deleteTransaction sekarang menggunakan kutipan karena ID dari Firebase berupa string (huruf+angka acak)
       const row = `
         <tr class="hover:bg-zinc-800/30 transition-colors group">
           <td class="px-6 py-4 text-sm whitespace-nowrap">${dateStr}</td>
@@ -214,9 +172,14 @@ function renderApp() {
             ${t.type === 'in' ? '+' : '-'} Rp ${formatRp(t.amount)}
           </td>
           <td class="px-6 py-4 text-center">
-            <button onclick="deleteTransaction('${t.id}')" class="text-zinc-600 hover:text-red-500 transition-colors">
-              <i data-lucide="trash-2" class="w-4 h-4"></i>
-            </button>
+            <div class="flex items-center justify-center gap-3">
+              <button onclick="editTransaction('${t.id}')" class="text-zinc-600 hover:text-blue-500 transition-colors" title="Edit">
+                <i data-lucide="edit" class="w-4 h-4"></i>
+              </button>
+              <button onclick="deleteTransaction('${t.id}')" class="text-zinc-600 hover:text-red-500 transition-colors" title="Hapus">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
           </td>
         </tr>
       `;
@@ -227,8 +190,7 @@ function renderApp() {
   budgetContainer.innerHTML = '';
   Object.entries(budgets).forEach(([cat, budgetAmount]) => {
     const actual = categoryExpenses[cat] || 0;
-    let percentage = (actual / budgetAmount) * 100;
-    if (percentage > 100) percentage = 100;
+    let percentage = Math.min((actual / budgetAmount) * 100, 100);
     const isOver = actual > budgetAmount;
 
     const budgetHtml = `
@@ -255,32 +217,67 @@ function renderApp() {
 if (monthFilter) monthFilter.addEventListener('change', renderApp);
 if (tableFilter) tableFilter.addEventListener('change', renderApp);
 
-// MENGHAPUS DATA DARI FIRESTORE
+// MENGHAPUS DATA
 window.deleteTransaction = async (id) => {
   if (confirm("Apakah Anda yakin ingin menghapus transaksi ini?")) {
-    try {
-      // Gunakan deleteDoc untuk menghapus berdasarkan ID dokumen
-      await deleteDoc(doc(db, "transactions", id));
-      // Kita tidak perlu memanggil renderApp() di sini, karena onSnapshot di atas akan mendeteksi perubahan dan otomatis me-render ulang!
-    } catch (error) {
-      console.error("Gagal menghapus data: ", error);
-      alert("Gagal menghapus transaksi.");
-    }
+    try { await deleteDoc(doc(db, "transactions", id)); } 
+    catch (error) { alert("Gagal menghapus transaksi."); }
   }
 };
 
-const modal = document.getElementById('modal');
-const btnOpenModal = document.getElementById('btnOpenModal');
-const btnCloseModal = document.getElementById('btnCloseModal');
-const transactionForm = document.getElementById('transactionForm');
+// MENGEDIT DATA (Membuka Modal & Mengisi Nilainya)
+window.editTransaction = (id) => {
+  // 1. Cari data transaksi berdasarkan ID
+  const t = transactions.find(txn => txn.id === id);
+  if (!t) return;
 
-const btnTypeIn = document.getElementById('btnTypeIn');
-const btnTypeOut = document.getElementById('btnTypeOut');
-const formType = document.getElementById('formType');
-const optGaji = document.getElementById('optGaji');
+  // 2. Isi hidden input dengan ID transaksi
+  if (editTransactionId) editTransactionId.value = id;
 
+  // 3. Isi form dengan data lama
+  document.getElementById('formDate').value = t.date;
+  document.getElementById('formAmount').value = t.amount;
+  document.getElementById('formNote').value = t.note;
+  document.getElementById('formMethod').value = t.method;
+  
+  // Set Tipe & Tombol Visualnya
+  formType.value = t.type;
+  if (t.type === 'in') {
+    btnTypeIn.className = 'flex-1 py-2 text-xs rounded-md transition-all bg-green-600 text-white shadow-lg';
+    btnTypeOut.className = 'flex-1 py-2 text-xs rounded-md transition-all text-zinc-400';
+    optGaji.classList.remove('hidden');
+  } else {
+    btnTypeOut.className = 'flex-1 py-2 text-xs rounded-md transition-all bg-red-600 text-white shadow-lg';
+    btnTypeIn.className = 'flex-1 py-2 text-xs rounded-md transition-all text-zinc-400';
+    optGaji.classList.add('hidden');
+  }
+
+  // Set Kategori (dilakukan setelah Tipe agar opsi Gaji muncul jika perlu)
+  document.getElementById('formCategory').value = t.category;
+
+  // 4. Ubah teks UI menjadi mode Edit
+  if (modalTitle) modalTitle.innerText = "Edit Transaksi";
+  if (btnSubmitForm) btnSubmitForm.innerText = "Simpan Perubahan";
+
+  // 5. Tampilkan Modal
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+};
+
+// MEMBUKA MODAL TAMBAH BARU (Pastikan form bersih)
 if (btnOpenModal) {
   btnOpenModal.addEventListener('click', () => {
+    transactionForm.reset(); // Bersihkan isi form
+    
+    // Reset Mode ke "Tambah"
+    if (editTransactionId) editTransactionId.value = ''; 
+    if (modalTitle) modalTitle.innerText = "Catat Baru";
+    if (btnSubmitForm) btnSubmitForm.innerText = "Simpan Transaksi";
+    
+    // Reset Date ke hari ini dan Tipe ke Pengeluaran (Out)
+    document.getElementById('formDate').value = new Date().toISOString().split('T')[0];
+    btnTypeOut.click(); 
+
     modal.classList.remove('hidden');
     modal.classList.add('flex');
   });
@@ -314,29 +311,37 @@ if (btnTypeOut) {
   });
 }
 
-// MENYIMPAN DATA BARU KE FIRESTORE
+// MENYIMPAN / MENGUPDATE DATA KE FIRESTORE
 if (transactionForm) {
   transactionForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    // Siapkan objek data yang mau disimpan
-    const newTransaction = {
-      userId: currentUser.uid, // Sangat Penting: Menandai ini milik siapa
+    const transactionData = {
+      userId: currentUser.uid, 
       type: formType.value,
       date: document.getElementById('formDate').value,
       amount: parseFloat(document.getElementById('formAmount').value),
       note: document.getElementById('formNote').value,
       method: document.getElementById('formMethod').value,
       category: document.getElementById('formCategory').value,
-      timestamp: new Date().toISOString() // Untuk mencatat kapan diinput
     };
+
+    // Cek apakah ini Edit atau Tambah Baru
+    const currentEditId = editTransactionId.value;
   
     try {
-      // Gunakan addDoc untuk menyimpan ke koleksi "transactions"
-      await addDoc(collection(db, "transactions"), newTransaction);
+      if (currentEditId) {
+        // JIKA MODE EDIT: Update dokumen yang sudah ada
+        await updateDoc(doc(db, "transactions", currentEditId), transactionData);
+      } else {
+        // JIKA MODE TAMBAH BARU: Buat dokumen baru dan catat waktu dibuat
+        transactionData.timestamp = new Date().toISOString();
+        await addDoc(collection(db, "transactions"), transactionData);
+      }
       
       // Reset form dan tutup modal setelah berhasil
       transactionForm.reset();
+      editTransactionId.value = ''; 
       document.getElementById('formDate').value = new Date().toISOString().split('T')[0];
       btnCloseModal.click();
       
