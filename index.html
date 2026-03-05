@@ -42,6 +42,13 @@
           Catat Transaksi
         </button>
 
+        <button id="btnOpenAI" class="bg-indigo-600 hover:bg-indigo-500 transition-colors text-white px-4 py-3 rounded-xl flex items-center justify-center gap-2 font-semibold shadow-lg shadow-indigo-900/20">
+          <i data-lucide="sparkles" class="w-5 h-5"></i>
+          Tanya AI
+        </button>
+
+        <button id="btnOpenModal" class="bg-orange-600 hover:bg-orange-500 ...">
+
         <button id="btnLogout" class="bg-zinc-800 hover:bg-red-500/20 hover:text-red-500 transition-colors text-zinc-400 p-3 rounded-xl border border-zinc-700">
           <i data-lucide="log-out" class="w-5 h-5"></i>
         </button>
@@ -300,6 +307,35 @@
     </div>
 
   </div> <script type="module" src="script.js"></script>
+
+  <div id="modalAI" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+      <div class="bg-zinc-900 border border-zinc-800 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
+        <div class="p-6 border-b border-zinc-800 flex justify-between items-center bg-indigo-900/20">
+          <div class="flex items-center gap-2">
+            <i data-lucide="bot" class="w-6 h-6 text-indigo-400"></i>
+            <h3 class="text-xl font-bold text-indigo-100">Financial Advisor AI</h3>
+          </div>
+          <button id="btnCloseAI" class="text-zinc-500 hover:text-white text-2xl">&times;</button>
+        </div>
+        
+        <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
+          <div id="aiLoading" class="hidden flex flex-col items-center justify-center space-y-3 py-8">
+            <i data-lucide="loader-2" class="w-8 h-8 text-indigo-500 animate-spin"></i>
+            <p class="text-zinc-400 text-sm animate-pulse">Sedang menganalisis keuanganmu...</p>
+          </div>
+          <div id="aiResponse" class="text-zinc-300 text-sm leading-relaxed whitespace-pre-line hidden">
+            </div>
+        </div>
+        
+        <div class="p-6 border-t border-zinc-800 bg-zinc-900/50">
+          <button id="btnAnalyzeAI" class="w-full bg-indigo-600 hover:bg-indigo-500 transition-colors text-white py-3 rounded-xl font-bold shadow-lg shadow-indigo-900/40 flex items-center justify-center gap-2">
+            <i data-lucide="zap" class="w-4 h-4"></i> Analisis Bulan Ini
+          </button>
+        </div>
+      </div>
+    </div>
+  
 </body>
 </html>
+
 
