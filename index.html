@@ -102,17 +102,20 @@
         </div>
 
         <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl">
-          <div class="flex items-center justify-between mb-6">
+          <div id="toggleBudgetBtn" class="flex items-center justify-between mb-6 cursor-pointer group">
             <div class="flex items-center gap-2">
               <i data-lucide="pie-chart" class="w-5 h-5 text-orange-500"></i>
-              <h3 class="font-bold text-lg">Rencana vs Realita</h3>
+              <h3 class="font-bold text-lg group-hover:text-orange-400 transition-colors">Rencana vs Realita</h3>
             </div>
-            <span class="text-xs text-zinc-500">Bulan Terpilih</span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-zinc-500">Bulan Terpilih</span>
+              <i data-lucide="chevron-down" id="budgetToggleIcon" class="w-5 h-5 text-zinc-400 transition-transform duration-300"></i>
+            </div>
           </div>
+          
           <div id="budgetContainer" class="space-y-5">
             </div>
         </div>
-      </div>
 
       <div class="lg:col-span-2 space-y-6">
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
@@ -233,3 +236,4 @@
   </div> <script type="module" src="script.js"></script>
 </body>
 </html>
+
