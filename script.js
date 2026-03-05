@@ -294,19 +294,19 @@ function renderApp() {
 
       const row = `
         <tr class="hover:bg-zinc-800/30 transition-colors group">
-          <td class="px-6 py-4 text-sm whitespace-nowrap">${dateStr}</td>
-          <td class="px-6 py-4 text-sm font-medium max-w-[150px] truncate">${t.note}</td>
-          <td class="px-6 py-4 text-xs whitespace-nowrap">
+          <td class="px-3 md:px-6 py-3 md:py-4 text-[11px] md:text-sm whitespace-nowrap">${dateStr}</td>
+          <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-medium max-w-[100px] md:max-w-[150px] truncate" title="${t.note}">${t.note}</td>
+          <td class="px-3 md:px-6 py-3 md:py-4 text-[10px] md:text-xs whitespace-nowrap hidden sm:table-cell">
             <span class="px-2 py-1 bg-zinc-800 text-zinc-300 rounded-md border border-zinc-700 inline-flex items-center">${methodHTML}</span>
           </td>
-          <td class="px-6 py-4 text-xs whitespace-nowrap">
+          <td class="px-3 md:px-6 py-3 md:py-4 text-[10px] md:text-xs whitespace-nowrap">
             <span class="text-orange-400 bg-orange-500/10 px-2 py-1 rounded-md">${categoryBadge}</span>
           </td>
-          <td class="px-6 py-4 text-sm font-bold text-right whitespace-nowrap">
+          <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold text-right whitespace-nowrap">
             ${amountHTML}
           </td>
-          <td class="px-6 py-4 text-center">
-            <div class="flex items-center justify-center gap-3">
+          <td class="px-2 md:px-6 py-3 md:py-4 text-center">
+            <div class="flex items-center justify-center gap-2 md:gap-3">
               <button onclick="editTransaction('${t.id}')" class="text-zinc-600 hover:text-blue-500 transition-colors" title="Edit">
                 <i data-lucide="edit" class="w-4 h-4"></i>
               </button>
@@ -522,4 +522,5 @@ if (toggleRuleBtn && ruleContainer) {
     ruleToggleIcon.classList.toggle('rotate-180');
   });
 }
+
 
