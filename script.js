@@ -77,9 +77,33 @@ function loadDataFromFirestore(userId) {
 }
 
 // APLIKASI
+// (Anda bisa mengubah angka-angka target budget ini sesuai keinginan Anda)
 const budgets = {
-  'Makanan & Minuman': 2000000, 'Transportasi': 1000000, 'Belanja': 1500000,
-  'Tagihan': 3500000, 'Hiburan': 500000,
+  // --- KEBUTUHAN (NEEDS) ---
+  'Makanan & Minuman': 2000000,
+  'Transportasi': 500000,
+  'Tagihan': 1000000,
+  'Kesehatan': 300000,
+  'Internet': 350000,
+  'Kebutuhan Rumah': 500000,
+  'Pendidikan': 1000000,
+  'Perawatan Kendaraan': 300000,
+
+  // --- KEINGINAN (WANTS) ---
+  'Belanja': 1000000,
+  'Hiburan': 400000,
+  'Game': 200000,
+  'Hadiah': 200000,
+  'Langganan': 150000,
+  'Liburan': 1000000,
+
+  // --- INVESTASI (INVEST) ---
+  'Reksa Dana': 1000000,
+  'Obligasi': 500000,
+  'Saham': 1000000,
+
+  // --- LAIN-LAIN ---
+  'Lainnya': 500000
 };
 
 // PEMETAAN KATEGORI 50/30/20
@@ -498,3 +522,4 @@ if (toggleRuleBtn && ruleContainer) {
     ruleToggleIcon.classList.toggle('rotate-180');
   });
 }
+
