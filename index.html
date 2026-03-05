@@ -144,6 +144,7 @@
         </div>
         
         <form id="transactionForm" class="p-6 space-y-4">
+          <input type="hidden" id="editTransactionId" value="">
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1">
               <label class="text-xs text-zinc-500 uppercase font-bold">Tipe</label>
@@ -194,7 +195,7 @@
             </div>
           </div>
 
-          <button type="submit" class="w-full bg-orange-600 hover:bg-orange-500 transition-colors text-white py-3 rounded-xl font-bold mt-4 shadow-lg shadow-orange-900/40">
+          <button type="submit" id="btnSubmitForm" class="w-full bg-orange-600 hover:bg-orange-500 transition-colors text-white py-3 rounded-xl font-bold mt-4 shadow-lg shadow-orange-900/40">
             Simpan Transaksi
           </button>
         </form>
@@ -204,3 +205,4 @@
   </div> <script type="module" src="script.js"></script>
 </body>
 </html>
+
