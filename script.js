@@ -279,6 +279,21 @@ function renderApp() {
 if (monthFilter) monthFilter.addEventListener('change', renderApp);
 if (tableFilter) tableFilter.addEventListener('change', renderApp);
 
+// FITUR BARU: TAMPIL/SEMBUNYIKAN RENCANA VS REALITA
+const toggleBudgetBtn = document.getElementById('toggleBudgetBtn');
+const budgetToggleIcon = document.getElementById('budgetToggleIcon');
+// (budgetContainer sudah dideklarasikan di atas sebelumnya)
+
+if (toggleBudgetBtn) {
+  toggleBudgetBtn.addEventListener('click', () => {
+    // Sembunyikan/Tampilkan isinya
+    budgetContainer.classList.toggle('hidden');
+    
+    // Putar ikon panah ke atas/bawah (180 derajat)
+    budgetToggleIcon.classList.toggle('rotate-180');
+  });
+}
+
 window.deleteTransaction = async (id) => {
   if (confirm("Apakah Anda yakin ingin menghapus transaksi ini?")) {
     try { await deleteDoc(doc(db, "transactions", id)); } 
@@ -430,3 +445,4 @@ if (transactionForm) {
     }
   });
 }
+
