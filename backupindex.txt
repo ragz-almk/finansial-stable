@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finansial Stable</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="min-h-screen bg-zinc-950 text-zinc-100 font-sans p-4 md:p-8">
+
+  <div class="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div>
+      <h1 class="text-3xl font-bold text-orange-500 tracking-tight">Finansial Stable</h1>
+      <p class="text-zinc-400">Kelola keuangan harianmu dengan bijak.</p>
+    </div>
+    
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 p-2 rounded-xl">
+        <i data-lucide="calendar" class="text-orange-500 w-5 h-5 ml-2"></i>
+        <input type="month" id="monthFilter" class="bg-transparent border-none text-white outline-none focus:ring-0 p-1 cursor-pointer custom-date-input">
+      </div>
+
+      <button id="btnOpenModal" class="bg-orange-600 hover:bg-orange-500 transition-colors text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 font-semibold shadow-lg shadow-orange-900/20">
+        <i data-lucide="plus" class="w-5 h-5"></i>
+        Catat Transaksi
+      </button>
+    </div>
+  </div>
+
+  <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+    
+    <div class="lg:col-span-1 space-y-6">
+      
+      <div class="grid grid-cols-1 gap-4">
+        <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl">
+          <div class="flex items-center gap-3 text-zinc-400 mb-2">
+            <i data-lucide="wallet" class="w-4 h-4"></i>
+            <span class="text-sm font-medium">Saldo Awal Bulan</span>
+          </div>
+          <h2 id="saldoAwal" class="text-xl font-bold text-zinc-300">Rp 0</h2>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl">
+            <div class="flex items-center gap-2 text-green-500 mb-1">
+              <i data-lucide="arrow-up-circle" class="w-4 h-4"></i>
+              <span class="text-xs font-medium uppercase tracking-wider">Masuk</span>
+            </div>
+            <div id="pemasukan" class="text-lg font-bold">Rp 0</div>
+          </div>
+          <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl">
+            <div class="flex items-center gap-2 text-red-500 mb-1">
+              <i data-lucide="arrow-down-circle" class="w-4 h-4"></i>
+              <span class="text-xs font-medium uppercase tracking-wider">Keluar</span>
+            </div>
+            <div id="pengeluaran" class="text-lg font-bold">Rp 0</div>
+          </div>
+        </div>
+
+        <div class="bg-zinc-800 border border-zinc-700 p-6 rounded-2xl shadow-lg">
+          <div class="flex items-center gap-3 text-zinc-300 mb-2">
+            <i data-lucide="wallet" class="w-5 h-5 text-orange-400"></i>
+            <span class="text-sm font-medium">Saldo Akhir Bulan</span>
+          </div>
+          <h2 id="saldoAkhir" class="text-3xl font-bold text-white">Rp 0</h2>
+        </div>
+      </div>
+
+      <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl">
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center gap-2">
+            <i data-lucide="pie-chart" class="w-5 h-5 text-orange-500"></i>
+            <h3 class="font-bold text-lg">Rencana vs Realita</h3>
+          </div>
+          <span class="text-xs text-zinc-500">Bulan Terpilih</span>
+        </div>
+        <div id="budgetContainer" class="space-y-5">
+          </div>
+      </div>
+    </div>
+
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+        <div class="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
+          <div class="flex items-center gap-2">
+            <i data-lucide="arrow-right-left" class="w-5 h-5 text-orange-500"></i>
+            <h3 class="font-bold text-lg">Riwayat Mutasi</h3>
+          </div>
+          <div class="flex items-center gap-2">
+            <i data-lucide="filter" class="w-4 h-4 text-zinc-400"></i>
+            <select id="tableFilter" class="bg-zinc-800 border-none text-xs text-zinc-300 rounded-lg p-2 focus:ring-2 focus:ring-orange-500 outline-none cursor-pointer">
+                <option value="all">Semua Mutasi</option>
+                <option value="in">Pemasukan (+)</option>
+                <option value="out">Pengeluaran (-)</option>
+            </select>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-zinc-950/50 text-zinc-500 text-xs uppercase tracking-widest">
+                <th class="px-6 py-4 font-semibold">Tanggal</th>
+                <th class="px-6 py-4 font-semibold">Keterangan</th>
+                <th class="px-6 py-4 font-semibold">Metode</th>
+                <th class="px-6 py-4 font-semibold">Kategori</th>
+                <th class="px-6 py-4 font-semibold text-right">In / Out</th>
+                <th class="px-6 py-4 font-semibold text-center w-10"></th>
+              </tr>
+            </thead>
+            <tbody id="transactionBody" class="divide-y divide-zinc-800/50">
+              </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl">
+      <div class="p-6 border-b border-zinc-800 flex justify-between items-center">
+        <h3 class="text-xl font-bold">Catat Baru</h3>
+        <button id="btnCloseModal" class="text-zinc-500 hover:text-white text-2xl">&times;</button>
+      </div>
+      
+      <form id="transactionForm" class="p-6 space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-1">
+            <label class="text-xs text-zinc-500 uppercase font-bold">Tipe</label>
+            <div class="flex bg-zinc-800 p-1 rounded-lg">
+              <button type="button" id="btnTypeIn" class="flex-1 py-2 text-xs rounded-md transition-all text-zinc-400">Pemasukan</button>
+              <button type="button" id="btnTypeOut" class="flex-1 py-2 text-xs rounded-md transition-all bg-red-600 text-white shadow-lg">Pengeluaran</button>
+            </div>
+            <input type="hidden" id="formType" value="out">
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs text-zinc-500 uppercase font-bold">Tanggal</label>
+            <input type="date" id="formDate" class="w-full bg-zinc-800 border-none rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-white custom-date-input" required>
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-xs text-zinc-500 uppercase font-bold">Nominal (Rp)</label>
+          <input type="number" id="formAmount" placeholder="0" class="w-full bg-zinc-800 border-none rounded-lg p-3 text-xl font-bold focus:ring-2 focus:ring-orange-500 outline-none text-white" required>
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-xs text-zinc-500 uppercase font-bold">Keterangan</label>
+          <input type="text" id="formNote" placeholder="Contoh: Belanja Bulanan" class="w-full bg-zinc-800 border-none rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-white" required>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-1">
+            <label class="text-xs text-zinc-500 uppercase font-bold">Metode</label>
+            <select id="formMethod" class="w-full bg-zinc-800 border-none rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-white">
+              <option value="Cash">Cash</option>
+              <option value="BCA">BCA</option>
+              <option value="Dana">Dana</option>
+            </select>
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs text-zinc-500 uppercase font-bold">Kategori</label>
+            <select id="formCategory" class="w-full bg-zinc-800 border-none rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-white">
+              <option value="Makanan & Minuman">Makanan & Minuman</option>
+              <option value="Transportasi">Transportasi</option>
+              <option value="Belanja">Belanja</option>
+              <option value="Tagihan">Tagihan</option>
+              <option value="Hiburan">Hiburan</option>
+              <option value="Kesehatan">Kesehatan</option>
+              <option value="Pendidikan">Pendidikan</option>
+              <option value="Lainnya">Lainnya</option>
+              <option value="Gaji" class="hidden" id="optGaji">Gaji</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-orange-600 hover:bg-orange-500 transition-colors text-white py-3 rounded-xl font-bold mt-4 shadow-lg shadow-orange-900/40">
+          Simpan Transaksi
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="script.js" defer></script>
+</body>
+
+</html>
