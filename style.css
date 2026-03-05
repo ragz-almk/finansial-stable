@@ -1,0 +1,32 @@
+/* style.css */
+
+/* Kustomisasi ikon kalender/tanggal bawaan browser agar ikonnya putih */
+.custom-date-input::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+}
+
+/* Mempercantik Scrollbar untuk area tabel yang bisa digeser */
+.custom-scrollbar::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #18181b; /* zinc-900 */
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #3f3f46; /* zinc-700 */
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #52525b; /* zinc-600 */
+}
+
+/* Transisi halus saat membuka/menutup modal */
+#modal {
+    transition: opacity 0.3s ease-in-out;
+}
