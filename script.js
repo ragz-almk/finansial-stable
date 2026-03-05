@@ -10,7 +10,7 @@ import {
 
 // KONFIGURASI FIREBASE ANDA
 const firebaseConfig = {
-  // --- ISI DENGAN API KEY ANDA SEBELUMNYA ---
+  // --- PASTIKAN API KEY ANDA BENAR ---
   apiKey: "AIzaSyDdoA3vMmk46N5DTwMyvN3Ck4ty8QRcN-E", 
   authDomain: "my-finansial-53830.firebaseapp.com",
   projectId: "my-finansial-53830",
@@ -81,6 +81,13 @@ const budgets = {
   'Makanan & Minuman': 2000000, 'Transportasi': 1000000, 'Belanja': 1500000,
   'Tagihan': 3500000, 'Hiburan': 500000,
 };
+
+// PEMETAAN KATEGORI 50/30/20
+const ALOKASI_RULE = {
+  kebutuhan: ['Makanan & Minuman', 'Transportasi', 'Tagihan', 'Kesehatan', 'Internet', 'Kebutuhan Rumah', 'Pendidikan', 'Perawatan Kendaraan'],
+  keinginan: ['Belanja', 'Hiburan', 'Game', 'Hadiah', 'Langganan', 'Liburan'],
+  investasi: ['Reksa Dana', 'Obligasi', 'Saham']
+};
   
 const monthFilter = document.getElementById('monthFilter');
 const tableFilter = document.getElementById('tableFilter');
@@ -89,7 +96,7 @@ const pemasukanEl = document.getElementById('pemasukan');
 const pengeluaranEl = document.getElementById('pengeluaran');
 const saldoAkhirEl = document.getElementById('saldoAkhir');
 
-// Fitur Baru: Saldo Per Metode
+// Saldo Per Metode
 const balBCAEl = document.getElementById('balBCA');
 const balDanaEl = document.getElementById('balDana');
 const balCashEl = document.getElementById('balCash');
@@ -97,6 +104,16 @@ const balCashEl = document.getElementById('balCash');
 const transactionBody = document.getElementById('transactionBody');
 const budgetContainer = document.getElementById('budgetContainer');
 
+// Elemen DOM Formula 50/30/20
+const pieChart = document.getElementById('pieChart');
+const lblKebutuhan = document.getElementById('lblKebutuhan');
+const pctKebutuhan = document.getElementById('pctKebutuhan');
+const lblKeinginan = document.getElementById('lblKeinginan');
+const pctKeinginan = document.getElementById('pctKeinginan');
+const lblInvestasi = document.getElementById('lblInvestasi');
+const pctInvestasi = document.getElementById('pctInvestasi');
+
+// Modal
 const modal = document.getElementById('modal');
 const btnOpenModal = document.getElementById('btnOpenModal');
 const btnCloseModal = document.getElementById('btnCloseModal');
@@ -110,7 +127,7 @@ const editTransactionId = document.getElementById('editTransactionId');
 const modalTitle = document.getElementById('modalTitle');
 const btnSubmitForm = document.getElementById('btnSubmitForm');
 
-// Fitur Baru: Container UI Form Transfer
+// Form Transfer
 const labelMethod = document.getElementById('labelMethod');
 const containerCategory = document.getElementById('containerCategory');
 const containerTransferTo = document.getElementById('containerTransferTo');
@@ -136,15 +153,15 @@ function renderApp() {
   let categoryExpenses = {};
   let monthTransactions = [];
 
-  // Variabel untuk Saldo Per Metode
+  // Saldo Per Metode & Alokasi 50/30/20
   let balBCA = 0;
   let balDana = 0;
   let balCash = 0;
+  let alokasi = { kebutuhan: 0, keinginan: 0, investasi: 0 };
 
   transactions.forEach(t => {
     const tMonth = t.date.substring(0, 7); 
     
-    // Perhitungan Saldo Per Metode (Dihitung dari awal s/d bulan yang dipilih)
     if (tMonth <= selectedMonth) {
       if (t.type === 'in') {
         if (t.method === 'BCA') balBCA += t.amount;
@@ -155,43 +172,75 @@ function renderApp() {
         if (t.method === 'Dana') balDana -= t.amount;
         if (t.method === 'Cash') balCash -= t.amount;
       } else if (t.type === 'transfer') {
-        // Mengurangi saldo dari metode asal
         if (t.method === 'BCA') balBCA -= t.amount;
         if (t.method === 'Dana') balDana -= t.amount;
         if (t.method === 'Cash') balCash -= t.amount;
-        // Menambah saldo ke metode tujuan
         if (t.transferTo === 'BCA') balBCA += t.amount;
         if (t.transferTo === 'Dana') balDana += t.amount;
         if (t.transferTo === 'Cash') balCash += t.amount;
       }
     }
 
-    // Perhitungan Pemasukan/Pengeluaran Kartu Summary Utama
     if (tMonth < selectedMonth) {
       if (t.type === 'in') saldoAwal += t.amount;
       else if (t.type === 'out') saldoAwal -= t.amount;
-      // Transfer tidak memengaruhi saldo awal global
     } else if (tMonth === selectedMonth) {
       monthTransactions.push(t);
       if (t.type === 'in') currentIncome += t.amount;
       else if (t.type === 'out') {
         currentExpense += t.amount;
         categoryExpenses[t.category] = (categoryExpenses[t.category] || 0) + t.amount;
+        
+        // --- HITUNG ALOKASI 50/30/20 ---
+        if (ALOKASI_RULE.kebutuhan.includes(t.category)) alokasi.kebutuhan += t.amount;
+        else if (ALOKASI_RULE.keinginan.includes(t.category)) alokasi.keinginan += t.amount;
+        else if (ALOKASI_RULE.investasi.includes(t.category)) alokasi.investasi += t.amount;
       }
-      // Transfer tidak menambah currentIncome & currentExpense
     }
   });
 
-  // Update UI Kartu Summary
+  // UI Summary & Dompet
   saldoAwalEl.innerText = `Rp ${formatRp(saldoAwal)}`;
   pemasukanEl.innerText = `Rp ${formatRp(currentIncome)}`;
   pengeluaranEl.innerText = `Rp ${formatRp(currentExpense)}`;
   saldoAkhirEl.innerText = `Rp ${formatRp(saldoAwal + currentIncome - currentExpense)}`;
-
-  // Update UI Saldo Per Metode
   balBCAEl.innerText = `Rp ${formatRp(balBCA)}`;
   balDanaEl.innerText = `Rp ${formatRp(balDana)}`;
   balCashEl.innerText = `Rp ${formatRp(balCash)}`;
+
+  // --- RENDER DIAGRAM 50/30/20 ---
+  if (pieChart) {
+    const totalAlokasi = alokasi.kebutuhan + alokasi.keinginan + alokasi.investasi;
+    
+    if (totalAlokasi > 0) {
+      const pKeb = (alokasi.kebutuhan / totalAlokasi) * 100;
+      const pKei = (alokasi.keinginan / totalAlokasi) * 100;
+      const pInv = (alokasi.investasi / totalAlokasi) * 100;
+      
+      pieChart.style.background = `conic-gradient(
+        #3b82f6 0% ${pKeb}%, 
+        #eab308 ${pKeb}% ${pKeb + pKei}%, 
+        #22c55e ${pKeb + pKei}% 100%
+      )`;
+
+      if(lblKebutuhan) lblKebutuhan.innerText = `Rp ${formatRp(alokasi.kebutuhan)}`;
+      if(pctKebutuhan) pctKebutuhan.innerText = `${Math.round(pKeb)}% dari pengeluaran`;
+
+      if(lblKeinginan) lblKeinginan.innerText = `Rp ${formatRp(alokasi.keinginan)}`;
+      if(pctKeinginan) pctKeinginan.innerText = `${Math.round(pKei)}% dari pengeluaran`;
+
+      if(lblInvestasi) lblInvestasi.innerText = `Rp ${formatRp(alokasi.investasi)}`;
+      if(pctInvestasi) pctInvestasi.innerText = `${Math.round(pInv)}% dari pengeluaran`;
+    } else {
+      pieChart.style.background = `conic-gradient(#3f3f46 0% 100%)`;
+      if(lblKebutuhan) lblKebutuhan.innerText = `Rp 0`;
+      if(pctKebutuhan) pctKebutuhan.innerText = `0% dari pengeluaran`;
+      if(lblKeinginan) lblKeinginan.innerText = `Rp 0`;
+      if(pctKeinginan) pctKeinginan.innerText = `0% dari pengeluaran`;
+      if(lblInvestasi) lblInvestasi.innerText = `Rp 0`;
+      if(pctInvestasi) pctInvestasi.innerText = `0% dari pengeluaran`;
+    }
+  }
 
   let tableData = monthTransactions;
   if (selectedFilter !== 'all') {
@@ -207,7 +256,6 @@ function renderApp() {
     tableData.forEach(t => {
       const dateStr = new Date(t.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
       
-      // Menyiapkan teks nominal dan kategori khusus untuk tipe Transfer
       let amountHTML = '';
       if (t.type === 'in') amountHTML = `<span class="text-green-400">+ Rp ${formatRp(t.amount)}</span>`;
       else if (t.type === 'out') amountHTML = `<span class="text-red-400">- Rp ${formatRp(t.amount)}</span>`;
@@ -279,21 +327,6 @@ function renderApp() {
 if (monthFilter) monthFilter.addEventListener('change', renderApp);
 if (tableFilter) tableFilter.addEventListener('change', renderApp);
 
-// FITUR BARU: TAMPIL/SEMBUNYIKAN RENCANA VS REALITA
-const toggleBudgetBtn = document.getElementById('toggleBudgetBtn');
-const budgetToggleIcon = document.getElementById('budgetToggleIcon');
-// (budgetContainer sudah dideklarasikan di atas sebelumnya)
-
-if (toggleBudgetBtn) {
-  toggleBudgetBtn.addEventListener('click', () => {
-    // Sembunyikan/Tampilkan isinya
-    budgetContainer.classList.toggle('hidden');
-    
-    // Putar ikon panah ke atas/bawah (180 derajat)
-    budgetToggleIcon.classList.toggle('rotate-180');
-  });
-}
-
 window.deleteTransaction = async (id) => {
   if (confirm("Apakah Anda yakin ingin menghapus transaksi ini?")) {
     try { await deleteDoc(doc(db, "transactions", id)); } 
@@ -319,7 +352,8 @@ window.editTransaction = (id) => {
   }
 
   if (t.type !== 'transfer') {
-    document.getElementById('formCategory').value = t.category;
+    // Kita panggil setTimeout kecil agar opsi select ke-render dulu
+    setTimeout(() => { document.getElementById('formCategory').value = t.category; }, 50);
   }
 
   if (modalTitle) modalTitle.innerText = "Edit Transaksi";
@@ -351,7 +385,7 @@ if (btnCloseModal) {
   });
 }
 
-// LOGIKA UI TIPE FORM (Masuk, Keluar, Transfer)
+// LOGIKA UI TIPE FORM
 if (btnTypeIn) {
   btnTypeIn.addEventListener('click', () => {
     formType.value = 'in';
@@ -396,14 +430,13 @@ if (btnTypeTransfer) {
   });
 }
 
-// MENYIMPAN TRANSAKSI
+// SIMPAN TRANSAKSI
 if (transactionForm) {
   transactionForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const isTransfer = formType.value === 'transfer';
     
-    // Validasi pencegahan transfer ke metode yang sama
     if (isTransfer && document.getElementById('formMethod').value === formTransferTo.value) {
       alert("Asal Dana dan Tujuan Transfer tidak boleh sama!");
       return;
@@ -419,10 +452,7 @@ if (transactionForm) {
       category: isTransfer ? 'Transfer Internal' : document.getElementById('formCategory').value,
     };
 
-    // Hanya tambahkan field "transferTo" jika tipenya adalah transfer
-    if (isTransfer) {
-      transactionData.transferTo = formTransferTo.value;
-    }
+    if (isTransfer) transactionData.transferTo = formTransferTo.value;
 
     const currentEditId = editTransactionId.value;
   
@@ -441,8 +471,30 @@ if (transactionForm) {
       
     } catch (error) {
       console.error("Gagal menyimpan transaksi: ", error);
-      alert("Gagal menyimpan data ke cloud. Pastikan internet Anda lancar.");
+      alert("Gagal menyimpan data ke cloud.");
     }
   });
 }
 
+// FITUR TAMPIL/SEMBUNYIKAN RENCANA VS REALITA
+const toggleBudgetBtn = document.getElementById('toggleBudgetBtn');
+const budgetToggleIcon = document.getElementById('budgetToggleIcon');
+
+if (toggleBudgetBtn) {
+  toggleBudgetBtn.addEventListener('click', () => {
+    budgetContainer.classList.toggle('hidden');
+    budgetToggleIcon.classList.toggle('rotate-180');
+  });
+}
+
+// FITUR TAMPIL/SEMBUNYIKAN FORMULA 50/30/20
+const toggleRuleBtn = document.getElementById('toggleRuleBtn');
+const ruleToggleIcon = document.getElementById('ruleToggleIcon');
+const ruleContainer = document.getElementById('ruleContainer');
+
+if (toggleRuleBtn && ruleContainer) {
+  toggleRuleBtn.addEventListener('click', () => {
+    ruleContainer.classList.toggle('hidden');
+    ruleToggleIcon.classList.toggle('rotate-180');
+  });
+}
