@@ -808,39 +808,72 @@ if (btnAiProcess) {
   });
 }
 
-// Render Hasil ke Layar Review
+// Helper untuk memunculkan daftar kategori di form edit AI
+function getCategoryOptionsHTML(selected) {
+  const categories = [
+    "Makanan & Minuman", "Transportasi", "Tagihan", "Kesehatan", "Internet", "Kebutuhan Rumah", "Pendidikan", "Perawatan Kendaraan",
+    "Belanja", "Hiburan", "Game", "Hadiah", "Langganan", "Liburan",
+    "Reksa Dana", "Obligasi", "Saham", "Gaji", "Transfer Internal", "Lainnya"
+  ];
+  return categories.map(c => `<option value="${c}" ${c === selected ? 'selected' : ''}>${c}</option>`).join('');
+}
+
+// Render Hasil ke Layar Review (Dapat Diedit Langsung)
 function renderAiReviewList() {
   aiReviewList.innerHTML = '';
   
   aiDraftTransactions.forEach(t => {
-    const isIncome = t.type === 'in';
-    const amountClass = isIncome ? 'text-green-400' : 'text-red-400';
-    const amountPrefix = isIncome ? '+' : '-';
-    
     const card = `
-      <div class="bg-zinc-800 border border-zinc-700 p-4 rounded-xl flex items-center justify-between" id="draft_card_${t.id}">
-        <div>
-          <div class="font-bold text-sm text-white mb-1">${t.note}</div>
-          <div class="flex items-center gap-2 text-[10px] text-zinc-400 uppercase font-semibold">
-            <span>${t.date}</span> &bull; 
-            <span class="px-1.5 py-0.5 bg-zinc-700 rounded text-zinc-300">${t.method}</span> &bull; 
-            <span class="text-orange-400">${t.category}</span>
+      <div class="bg-zinc-800 border border-zinc-700 p-4 rounded-xl relative space-y-3 mb-3 shadow-lg">
+        
+        <button onclick="removeAiDraft('${t.id}')" class="absolute top-2 right-2 text-zinc-500 hover:text-red-500 p-1 transition-colors" title="Hapus baris ini">
+          <i data-lucide="x-circle" class="w-5 h-5"></i>
+        </button>
+
+        <div class="pr-8">
+          <input type="text" value="${t.note}" onchange="updateAiDraft('${t.id}', 'note', this.value)" class="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-2 text-sm font-bold text-white focus:ring-1 focus:ring-indigo-500 outline-none transition-colors" placeholder="Keterangan Transaksi">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <input type="date" value="${t.date}" onchange="updateAiDraft('${t.id}', 'date', this.value)" class="bg-zinc-900 border border-zinc-600 rounded-lg p-2 text-xs text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none custom-date-input">
+          
+          <div class="relative">
+            <span class="absolute left-2.5 top-2.5 text-xs text-zinc-500 font-bold">Rp</span>
+            <input type="number" value="${t.amount}" onchange="updateAiDraft('${t.id}', 'amount', this.value)" class="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-2 pl-8 text-xs text-white font-bold focus:ring-1 focus:ring-indigo-500 outline-none transition-colors" placeholder="Nominal">
           </div>
         </div>
-        <div class="flex items-center gap-4">
-          <div class="font-bold ${amountClass} whitespace-nowrap">
-            ${amountPrefix} Rp ${formatRp(t.amount)}
-          </div>
-          <button onclick="removeAiDraft('${t.id}')" class="text-zinc-500 hover:text-red-500 transition-colors p-1" title="Hapus dari daftar">
-            <i data-lucide="x-circle" class="w-5 h-5"></i>
-          </button>
+
+        <div class="grid grid-cols-3 gap-2">
+          <select onchange="updateAiDraft('${t.id}', 'type', this.value)" class="bg-zinc-900 border border-zinc-600 rounded-lg p-2 text-[10px] sm:text-xs text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none">
+            <option value="out" ${t.type === 'out' ? 'selected' : ''}>Keluar (-)</option>
+            <option value="in" ${t.type === 'in' ? 'selected' : ''}>Masuk (+)</option>
+          </select>
+
+          <select onchange="updateAiDraft('${t.id}', 'method', this.value)" class="bg-zinc-900 border border-zinc-600 rounded-lg p-2 text-[10px] sm:text-xs text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none">
+            <option value="Cash" ${t.method === 'Cash' ? 'selected' : ''}>Cash</option>
+            <option value="BCA" ${t.method === 'BCA' ? 'selected' : ''}>BCA</option>
+            <option value="Dana" ${t.method === 'Dana' ? 'selected' : ''}>Dana</option>
+          </select>
+
+          <select onchange="updateAiDraft('${t.id}', 'category', this.value)" class="bg-zinc-900 border border-zinc-600 rounded-lg p-2 text-[10px] sm:text-xs text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none">
+            ${getCategoryOptionsHTML(t.category)}
+          </select>
         </div>
+
       </div>
     `;
     aiReviewList.insertAdjacentHTML('beforeend', card);
   });
   lucide.createIcons();
 }
+
+// Fungsi untuk menyimpan perubahan yang diketik ke memori sementara (Draft)
+window.updateAiDraft = (id, field, value) => {
+  const index = aiDraftTransactions.findIndex(t => t.id === id);
+  if (index !== -1) {
+    aiDraftTransactions[index][field] = value;
+  }
+};
 
 // Fungsi Hapus baris hasil "Halu" AI sebelum disave
 window.removeAiDraft = (id) => {
@@ -898,5 +931,6 @@ if (btnAiSaveAll) {
     }
   });
 }
+
 
 
