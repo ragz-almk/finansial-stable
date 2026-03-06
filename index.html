@@ -8,6 +8,19 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" href="style.css">
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#f97316">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="icon" type="image/png" href="icon-192.png"> <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('PWA Ready!', reg))
+          .catch(err => console.log('PWA Failed', err));
+      });
+    }
+  </script>
 </head>
 <body class="min-h-screen bg-zinc-950 text-zinc-100 font-sans p-4 md:p-8 relative">
 
@@ -383,6 +396,7 @@
   
 </body>
 </html>
+
 
 
 
