@@ -664,5 +664,239 @@ if (btnAnalyzeAI) {
   });
 }
 
+// ==========================================
+// FITUR AUTO INPUT TRANSAKSI VIA AI
+// ==========================================
+
+const btnToggleAiInput = document.getElementById('btnToggleAiInput');
+const viewManualForm = document.getElementById('viewManualForm');
+const viewAiInput = document.getElementById('viewAiInput');
+const viewAiReview = document.getElementById('viewAiReview');
+
+const aiPromptInput = document.getElementById('aiPromptInput');
+const aiImageInput = document.getElementById('aiImageInput');
+const aiFileName = document.getElementById('aiFileName');
+const btnAiClearImage = document.getElementById('btnAiClearImage');
+const btnAiProcess = document.getElementById('btnAiProcess');
+const aiReviewList = document.getElementById('aiReviewList');
+const btnAiSaveAll = document.getElementById('btnAiSaveAll');
+
+let isAiMode = false;
+let aiDraftTransactions = []; // Menyimpan hasil parse sementara
+
+// Mengubah Tampilan antara Manual dan AI Input
+if (btnToggleAiInput) {
+  btnToggleAiInput.addEventListener('click', () => {
+    isAiMode = !isAiMode;
+    if (isAiMode) {
+      modalTitle.innerText = "Auto Input AI";
+      btnToggleAiInput.classList.replace('text-indigo-400', 'text-white');
+      btnToggleAiInput.classList.replace('bg-indigo-600/20', 'bg-indigo-600');
+      viewManualForm.classList.replace('block', 'hidden');
+      viewAiInput.classList.replace('hidden', 'block');
+      viewAiReview.classList.replace('block', 'hidden');
+    } else {
+      modalTitle.innerText = "Catat Baru";
+      btnToggleAiInput.classList.replace('text-white', 'text-indigo-400');
+      btnToggleAiInput.classList.replace('bg-indigo-600', 'bg-indigo-600/20');
+      viewManualForm.classList.replace('hidden', 'block');
+      viewAiInput.classList.replace('block', 'hidden');
+      viewAiReview.classList.replace('block', 'hidden');
+    }
+  });
+}
+
+// Menangani Input Gambar
+if (aiImageInput) {
+  aiImageInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      aiFileName.innerText = file.name;
+      btnAiClearImage.classList.remove('hidden');
+    }
+  });
+}
+
+if (btnAiClearImage) {
+  btnAiClearImage.addEventListener('click', () => {
+    aiImageInput.value = "";
+    aiFileName.innerText = "Unggah Screenshot / Struk";
+    btnAiClearImage.classList.add('hidden');
+  });
+}
+
+// Fungsi Konversi Gambar ke Base64 (Syarat API Google)
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      // Mengambil data Base64 saja (tanpa header 'data:image/png;base64,')
+      resolve(reader.result.split(',')[1]); 
+    };
+    reader.onerror = error => reject(error);
+  });
+}
+
+// Proses Ekstraksi AI
+if (btnAiProcess) {
+  btnAiProcess.addEventListener('click', async () => {
+    const text = aiPromptInput.value.trim();
+    const file = aiImageInput.files[0];
+
+    if (!text && !file) {
+      alert("Masukkan teks catatan atau unggah gambar mutasi!");
+      return;
+    }
+
+    const originalText = btnAiProcess.innerHTML;
+    btnAiProcess.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Sedang Membaca...`;
+    btnAiProcess.disabled = true;
+    btnAiProcess.classList.add('opacity-50', 'cursor-not-allowed');
+
+    try {
+      let base64Data = null;
+      let mimeType = null;
+      
+      if (file) {
+        base64Data = await fileToBase64(file);
+        mimeType = file.type;
+      }
+
+      // Panggil Backend Vercel Kedua kita
+      const response = await fetch('/api/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          text: text, 
+          imageBase64: base64Data,
+          mimeType: mimeType
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Gagal menghubungi server");
+      }
+
+      const parsedData = await response.json();
+      
+      if (!Array.isArray(parsedData) || parsedData.length === 0) {
+        throw new Error("AI tidak menemukan data transaksi keuangan yang valid.");
+      }
+
+      // Simpan ke memori draft sementara
+      aiDraftTransactions = parsedData.map(t => ({
+        ...t,
+        id: 'draft_' + Math.random().toString(36).substr(2, 9) // Beri ID palsu sementara untuk UI
+      }));
+
+      // Render halaman Review
+      renderAiReviewList();
+      viewAiInput.classList.replace('block', 'hidden');
+      viewAiReview.classList.replace('hidden', 'flex');
+
+    } catch (error) {
+      console.error(error);
+      alert("Gagal memproses data: " + error.message);
+    } finally {
+      btnAiProcess.innerHTML = originalText;
+      btnAiProcess.disabled = false;
+      btnAiProcess.classList.remove('opacity-50', 'cursor-not-allowed');
+      lucide.createIcons();
+    }
+  });
+}
+
+// Render Hasil ke Layar Review
+function renderAiReviewList() {
+  aiReviewList.innerHTML = '';
+  
+  aiDraftTransactions.forEach(t => {
+    const isIncome = t.type === 'in';
+    const amountClass = isIncome ? 'text-green-400' : 'text-red-400';
+    const amountPrefix = isIncome ? '+' : '-';
+    
+    const card = `
+      <div class="bg-zinc-800 border border-zinc-700 p-4 rounded-xl flex items-center justify-between" id="draft_card_${t.id}">
+        <div>
+          <div class="font-bold text-sm text-white mb-1">${t.note}</div>
+          <div class="flex items-center gap-2 text-[10px] text-zinc-400 uppercase font-semibold">
+            <span>${t.date}</span> &bull; 
+            <span class="px-1.5 py-0.5 bg-zinc-700 rounded text-zinc-300">${t.method}</span> &bull; 
+            <span class="text-orange-400">${t.category}</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="font-bold ${amountClass} whitespace-nowrap">
+            ${amountPrefix} Rp ${formatRp(t.amount)}
+          </div>
+          <button onclick="removeAiDraft('${t.id}')" class="text-zinc-500 hover:text-red-500 transition-colors p-1" title="Hapus dari daftar">
+            <i data-lucide="x-circle" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+    `;
+    aiReviewList.insertAdjacentHTML('beforeend', card);
+  });
+  lucide.createIcons();
+}
+
+// Fungsi Hapus baris hasil "Halu" AI sebelum disave
+window.removeAiDraft = (id) => {
+  aiDraftTransactions = aiDraftTransactions.filter(t => t.id !== id);
+  if (aiDraftTransactions.length === 0) {
+    // Jika semua dihapus, kembali ke mode input
+    viewAiReview.classList.replace('flex', 'hidden');
+    viewAiInput.classList.replace('hidden', 'block');
+  } else {
+    renderAiReviewList();
+  }
+};
+
+// SIMPAN SEMUA TRANSAKSI DARI AI KE FIRESTORE
+if (btnAiSaveAll) {
+  btnAiSaveAll.addEventListener('click', async () => {
+    const originalText = btnAiSaveAll.innerHTML;
+    btnAiSaveAll.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Menyimpan...`;
+    btnAiSaveAll.disabled = true;
+
+    try {
+      // Kita loop dan simpan satu-satu ke Firestore
+      // menggunakan Promise.all agar berjalan bersamaan (lebih cepat)
+      await Promise.all(aiDraftTransactions.map(async (t) => {
+        const transactionData = {
+          userId: currentUser.uid, 
+          type: t.type,
+          date: t.date,
+          amount: parseFloat(t.amount),
+          note: t.note,
+          method: t.method,
+          category: t.category,
+          timestamp: new Date().toISOString()
+        };
+        await addDoc(collection(db, "transactions"), transactionData);
+      }));
+
+      // Jika berhasil semua:
+      aiPromptInput.value = ""; // Bersihkan teks
+      if (btnAiClearImage) btnAiClearImage.click(); // Bersihkan gambar
+      btnCloseModal.click(); // Tutup modal
+      
+      // Kembalikan tombol mode AI ke state awal (Manual Form)
+      btnToggleAiInput.click(); 
+      
+      alert(`Sukses! ${aiDraftTransactions.length} transaksi berhasil dicatat.`);
+      
+    } catch (error) {
+      console.error(error);
+      alert("Gagal menyimpan ke database. Cek koneksi Anda.");
+    } finally {
+      btnAiSaveAll.innerHTML = originalText;
+      btnAiSaveAll.disabled = false;
+      lucide.createIcons();
+    }
+  });
+}
 
 
