@@ -16,16 +16,17 @@ export default async function handler(req, res) {
   // Instruksi ketat agar AI mengembalikan format array JSON yang sesuai dengan database kita
   const promptText = `
     Tugasmu adalah mengekstrak data transaksi keuangan dari teks atau gambar nota/mutasi yang diberikan.
-    Kamu harus mengembalikan HANYA sebuah array JSON yang valid (tanpa teks awalan/akhiran, tanpa format markdown \`\`\`json).
+    Kembalikan HANYA sebuah array JSON yang valid (tanpa teks awalan/akhiran, tanpa markdown).
     
     Format setiap objek dalam array harus persis seperti ini:
     {
-      "date": "YYYY-MM-DD" (Tebak tahun dan bulannya jika hanya ada tanggal, gunakan bulan dan tahun saat ini),
-      "type": "in" atau "out",
+      "date": "YYYY-MM-DD" (Gunakan bulan dan tahun saat ini jika tidak ada),
+      "type": "in", "out", atau "transfer" (Gunakan 'transfer' jika itu adalah pemindahan uang antar dompet sendiri, misal dari BCA ke Dana),
       "amount": angka bulat (contoh: 50000),
       "note": "Keterangan singkat",
-      "method": "Cash", "BCA", atau "Dana" (Jika tidak jelas, default ke "Cash"),
-      "category": "Pilih SATU yang paling cocok dari daftar ini: Makanan & Minuman, Transportasi, Tagihan, Kesehatan, Internet, Kebutuhan Rumah, Pendidikan, Perawatan Kendaraan, Belanja, Hiburan, Game, Hadiah, Langganan, Liburan, Reksa Dana, Obligasi, Saham, Gaji, Lainnya"
+      "method": "Cash", "BCA", atau "Dana" (Dompet asal),
+      "category": "Pilih SATU dari: Makanan & Minuman, Transportasi, Tagihan, Kesehatan, Internet, Kebutuhan Rumah, Pendidikan, Perawatan Kendaraan, Belanja, Hiburan, Game, Hadiah, Langganan, Liburan, Reksa Dana, Obligasi, Saham, Gaji, Lainnya. (JIKA type adalah 'transfer', isi dengan 'Transfer Internal')",
+      "transferTo": "Cash", "BCA", atau "Dana" (Dompet tujuan. WAJIB DIISI HANYA JIKA type adalah 'transfer', jika bukan transfer kosongkan saja)
     }
 
     Pesan/Teks dari user: ${text || "Ekstrak semua transaksi dari gambar yang dilampirkan."}
