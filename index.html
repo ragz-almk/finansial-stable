@@ -211,98 +211,144 @@
           </div>
         </div>
       </div> </div> <div id="modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-      <div class="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl">
+      <div class="bg-zinc-900 border border-zinc-800 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl transition-all">
+        
         <div class="p-6 border-b border-zinc-800 flex justify-between items-center">
-          <h3 id="modalTitle" class="text-xl font-bold">Catat Baru</h3>
+          <div class="flex items-center gap-3">
+            <h3 id="modalTitle" class="text-xl font-bold">Catat Baru</h3>
+            <button id="btnToggleAiInput" class="bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white p-1.5 rounded-lg transition-colors" title="Input Otomatis via AI">
+              <i data-lucide="sparkles" class="w-4 h-4"></i>
+            </button>
+          </div>
           <button id="btnCloseModal" class="text-zinc-500 hover:text-white text-2xl">&times;</button>
         </div>
         
-        <form id="transactionForm" class="p-6 space-y-4">
-          <input type="hidden" id="editTransactionId" value="">
+        <div id="viewManualForm" class="block">
+          <form id="transactionForm" class="p-6 space-y-4">
+            <input type="hidden" id="editTransactionId" value="">
 
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1 col-span-2 md:col-span-1">
-              <label class="text-xs text-zinc-500 uppercase font-bold">Tipe</label>
-              <div class="flex bg-zinc-800 p-1 rounded-lg">
-                <button type="button" id="btnTypeIn" class="flex-1 py-2 text-xs rounded-md transition-all text-zinc-400">Masuk</button>
-                <button type="button" id="btnTypeOut" class="flex-1 py-2 text-xs rounded-md transition-all bg-red-600 text-white shadow-lg">Keluar</button>
-                <button type="button" id="btnTypeTransfer" class="flex-1 py-2 text-xs rounded-md transition-all text-zinc-400">Transfer</button>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-1 col-span-2 md:col-span-1">
+                <label class="text-xs text-zinc-500 uppercase font-bold">Tipe</label>
+                <div class="flex bg-zinc-800 p-1 rounded-lg">
+                  <button type="button" id="btnTypeIn" class="flex-1 py-2 text-xs rounded-md transition-all text-zinc-400">Masuk</button>
+                  <button type="button" id="btnTypeOut" class="flex-1 py-2 text-xs rounded-md transition-all bg-red-600 text-white shadow-lg">Keluar</button>
+                  <button type="button" id="btnTypeTransfer" class="flex-1 py-2 text-xs rounded-md transition-all text-zinc-400">Transfer</button>
+                </div>
+                <input type="hidden" id="formType" value="out">
               </div>
-              <input type="hidden" id="formType" value="out">
+              <div class="space-y-1 col-span-2 md:col-span-1">
+                <label class="text-xs text-zinc-500 uppercase font-bold">Tanggal</label>
+                <input type="date" id="formDate" class="w-full bg-zinc-800 border-none rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-white custom-date-input" required>
+              </div>
             </div>
-            <div class="space-y-1 col-span-2 md:col-span-1">
-              <label class="text-xs text-zinc-500 uppercase font-bold">Tanggal</label>
-              <input type="date" id="formDate" class="w-full bg-zinc-800 border-none rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-white custom-date-input" required>
-            </div>
-          </div>
 
-          <div class="space-y-1">
-            <label class="text-xs text-zinc-500 uppercase font-bold">Nominal (Rp)</label>
-            <input type="number" id="formAmount" placeholder="0" class="w-full bg-zinc-800 border-none rounded-lg p-3 text-xl font-bold focus:ring-2 focus:ring-orange-500 outline-none text-white" required>
-          </div>
-
-          <div class="space-y-1">
-            <label class="text-xs text-zinc-500 uppercase font-bold">Keterangan</label>
-            <input type="text" id="formNote" placeholder="Contoh: Belanja Bulanan" class="w-full bg-zinc-800 border-none rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-white" required>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1">
-              <label id="labelMethod" class="text-xs text-zinc-500 uppercase font-bold">Metode</label>
-              <select id="formMethod" class="w-full bg-zinc-800 border-none rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-white">
-                <option value="Cash">Cash</option>
-                <option value="BCA">BCA</option>
-                <option value="Dana">Dana</option>
-              </select>
-            </div>
-            
-            <div id="containerCategory" class="space-y-1">
-              <label class="text-xs text-zinc-500 uppercase font-bold">Kategori</label>
-              <select id="formCategory" class="w-full bg-zinc-800 border-none rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-white">
-                <optgroup label="Kebutuhan (Needs - 50%)">
-                  <option value="Makanan & Minuman">Makanan & Minuman</option>
-                  <option value="Transportasi">Transportasi</option>
-                  <option value="Tagihan">Tagihan</option>
-                  <option value="Kesehatan">Kesehatan</option>
-                  <option value="Internet">Internet</option>
-                  <option value="Kebutuhan Rumah">Kebutuhan Rumah</option>
-                  <option value="Pendidikan">Pendidikan</option>
-                  <option value="Perawatan Kendaraan">Perawatan Kendaraan</option>
-                </optgroup>
-                <optgroup label="Keinginan (Wants - 30%)">
-                  <option value="Belanja">Belanja</option>
-                  <option value="Hiburan">Hiburan</option>
-                  <option value="Game">Game</option>
-                  <option value="Hadiah">Hadiah</option>
-                  <option value="Langganan">Langganan</option>
-                  <option value="Liburan">Liburan</option>
-                </optgroup>
-                <optgroup label="Investasi (Invest - 20%)">
-                  <option value="Reksa Dana">Reksa Dana</option>
-                  <option value="Obligasi">Obligasi</option>
-                  <option value="Saham">Saham</option>
-                </optgroup>
-                <optgroup label="Lainnya">
-                  <option value="Lainnya">Lainnya</option>
-                  <option value="Gaji" class="hidden" id="optGaji">Gaji</option>
-                </optgroup>
-              </select>
+              <label class="text-xs text-zinc-500 uppercase font-bold">Nominal (Rp)</label>
+              <input type="number" id="formAmount" placeholder="0" class="w-full bg-zinc-800 border-none rounded-lg p-3 text-xl font-bold focus:ring-2 focus:ring-orange-500 outline-none text-white" required>
             </div>
 
-            <div id="containerTransferTo" class="space-y-1 hidden">
-              <label class="text-xs text-orange-400 uppercase font-bold">Tujuan Transfer</label>
-              <select id="formTransferTo" class="w-full bg-orange-500/10 text-orange-400 border border-orange-500/30 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none">
-                <option value="BCA">BCA</option>
-                <option value="Dana">Dana</option>
-                <option value="Cash">Cash</option>
-              </select>
+            <div class="space-y-1">
+              <label class="text-xs text-zinc-500 uppercase font-bold">Keterangan</label>
+              <input type="text" id="formNote" placeholder="Contoh: Belanja Bulanan" class="w-full bg-zinc-800 border-none rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-white" required>
             </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <label id="labelMethod" class="text-xs text-zinc-500 uppercase font-bold">Metode</label>
+                <select id="formMethod" class="w-full bg-zinc-800 border-none rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-white">
+                  <option value="Cash">Cash</option>
+                  <option value="BCA">BCA</option>
+                  <option value="Dana">Dana</option>
+                </select>
+              </div>
+              
+              <div id="containerCategory" class="space-y-1">
+                <label class="text-xs text-zinc-500 uppercase font-bold">Kategori</label>
+                <select id="formCategory" class="w-full bg-zinc-800 border-none rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-white">
+                  <optgroup label="Kebutuhan (Needs - 50%)">
+                    <option value="Makanan & Minuman">Makanan & Minuman</option>
+                    <option value="Transportasi">Transportasi</option>
+                    <option value="Tagihan">Tagihan</option>
+                    <option value="Kesehatan">Kesehatan</option>
+                    <option value="Internet">Internet</option>
+                    <option value="Kebutuhan Rumah">Kebutuhan Rumah</option>
+                    <option value="Pendidikan">Pendidikan</option>
+                    <option value="Perawatan Kendaraan">Perawatan Kendaraan</option>
+                  </optgroup>
+                  <optgroup label="Keinginan (Wants - 30%)">
+                    <option value="Belanja">Belanja</option>
+                    <option value="Hiburan">Hiburan</option>
+                    <option value="Game">Game</option>
+                    <option value="Hadiah">Hadiah</option>
+                    <option value="Langganan">Langganan</option>
+                    <option value="Liburan">Liburan</option>
+                  </optgroup>
+                  <optgroup label="Investasi (Invest - 20%)">
+                    <option value="Reksa Dana">Reksa Dana</option>
+                    <option value="Obligasi">Obligasi</option>
+                    <option value="Saham">Saham</option>
+                  </optgroup>
+                  <optgroup label="Lainnya">
+                    <option value="Lainnya">Lainnya</option>
+                    <option value="Gaji" class="hidden" id="optGaji">Gaji</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              <div id="containerTransferTo" class="space-y-1 hidden">
+                <label class="text-xs text-orange-400 uppercase font-bold">Tujuan Transfer</label>
+                <select id="formTransferTo" class="w-full bg-orange-500/10 text-orange-400 border border-orange-500/30 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none">
+                  <option value="BCA">BCA</option>
+                  <option value="Dana">Dana</option>
+                  <option value="Cash">Cash</option>
+                </select>
+              </div>
+            </div>
+
+            <button type="submit" id="btnSubmitForm" class="w-full bg-orange-600 hover:bg-orange-500 transition-colors text-white py-3 rounded-xl font-bold mt-4 shadow-lg shadow-orange-900/40">
+              Simpan Transaksi
+            </button>
+          </form>
+        </div>
+
+        <div id="viewAiInput" class="hidden p-6 space-y-4">
+          <div class="p-4 bg-indigo-500/10 border border-indigo-500/30 rounded-xl text-indigo-300 text-sm">
+            <i data-lucide="info" class="w-4 h-4 inline mr-1"></i>
+            Ketik banyak transaksi sekaligus atau unggah screenshot mutasi/struk.
+          </div>
+          
+          <textarea id="aiPromptInput" rows="4" placeholder="Contoh: Tgl 15 maret Uang kos 500rb, makan kfc 50k cash..." class="w-full bg-zinc-800 border-none rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none text-white resize-none"></textarea>
+          
+          <div class="flex items-center gap-3">
+            <label class="flex-1 cursor-pointer bg-zinc-800 hover:bg-zinc-700 transition-colors border border-dashed border-zinc-600 rounded-lg p-3 flex items-center justify-center gap-2 text-zinc-400 text-sm">
+              <i data-lucide="image-plus" class="w-5 h-5"></i>
+              <span id="aiFileName">Unggah Screenshot / Struk</span>
+              <input type="file" id="aiImageInput" accept="image/*" class="hidden">
+            </label>
+            <button id="btnAiClearImage" class="hidden p-3 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition-colors">
+              <i data-lucide="trash-2" class="w-5 h-5"></i>
+            </button>
           </div>
 
-          <button type="submit" id="btnSubmitForm" class="w-full bg-orange-600 hover:bg-orange-500 transition-colors text-white py-3 rounded-xl font-bold mt-4 shadow-lg shadow-orange-900/40">
-            Simpan Transaksi
+          <button id="btnAiProcess" class="w-full bg-indigo-600 hover:bg-indigo-500 transition-colors text-white py-3 rounded-xl font-bold mt-2 shadow-lg shadow-indigo-900/40 flex justify-center items-center gap-2">
+            <i data-lucide="scan-text" class="w-5 h-5"></i> Ekstrak Data
           </button>
-        </form>
+        </div>
+
+        <div id="viewAiReview" class="hidden p-6 flex flex-col max-h-[70vh]">
+          <div class="mb-4 text-sm text-zinc-400">
+            Cek kembali hasil ekstraksi AI di bawah ini. Hapus yang tidak perlu.
+          </div>
+          
+          <div class="overflow-y-auto flex-1 custom-scrollbar space-y-3 pr-2" id="aiReviewList">
+            </div>
+
+          <button id="btnAiSaveAll" class="w-full bg-green-600 hover:bg-green-500 transition-colors text-white py-3 rounded-xl font-bold mt-6 shadow-lg shadow-green-900/40 flex justify-center items-center gap-2">
+            <i data-lucide="check-circle" class="w-5 h-5"></i> Simpan Semua ke Database
+          </button>
+        </div>
+
       </div>
     </div>
 
@@ -337,6 +383,7 @@
   
 </body>
 </html>
+
 
 
 
