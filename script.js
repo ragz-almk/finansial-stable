@@ -818,11 +818,46 @@ function getCategoryOptionsHTML(selected) {
   return categories.map(c => `<option value="${c}" ${c === selected ? 'selected' : ''}>${c}</option>`).join('');
 }
 
-// Render Hasil ke Layar Review (Dapat Diedit Langsung)
+// Render Hasil ke Layar Review (Dapat Diedit Langsung & Mendukung Transfer)
 function renderAiReviewList() {
   aiReviewList.innerHTML = '';
   
   aiDraftTransactions.forEach(t => {
+    const isIncome = t.type === 'in';
+    const isTransfer = t.type === 'transfer';
+    
+    let amountClass = isIncome ? 'text-green-400' : 'text-red-400';
+    let amountPrefix = isIncome ? '+' : '-';
+    
+    // Jika transfer, warnanya biru dan tidak ada +/-
+    if (isTransfer) {
+      amountClass = 'text-blue-400';
+      amountPrefix = '';
+    }
+    
+    // Menentukan Dropdown Kolom ke-3: Kategori ATAU Tujuan Transfer
+    let thirdColumnHTML = '';
+    if (isTransfer) {
+      // Set default tujuan transfer jika AI lupa mengisinya atau kita baru mengubahnya secara manual
+      if (!t.transferTo || t.transferTo === t.method) {
+        t.transferTo = (t.method === 'BCA') ? 'Dana' : 'BCA'; 
+      }
+      
+      thirdColumnHTML = `
+        <select onchange="updateAiDraft('${t.id}', 'transferTo', this.value)" class="bg-orange-500/10 text-orange-400 border border-orange-500/30 rounded-lg p-2 text-[10px] sm:text-xs focus:ring-1 focus:ring-orange-500 outline-none" title="Tujuan Transfer">
+          <option value="BCA" ${t.transferTo === 'BCA' ? 'selected' : ''}>Ke BCA</option>
+          <option value="Dana" ${t.transferTo === 'Dana' ? 'selected' : ''}>Ke Dana</option>
+          <option value="Cash" ${t.transferTo === 'Cash' ? 'selected' : ''}>Ke Cash</option>
+        </select>
+      `;
+    } else {
+      thirdColumnHTML = `
+        <select onchange="updateAiDraft('${t.id}', 'category', this.value)" class="bg-zinc-900 border border-zinc-600 rounded-lg p-2 text-[10px] sm:text-xs text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none" title="Kategori">
+          ${getCategoryOptionsHTML(t.category)}
+        </select>
+      `;
+    }
+
     const card = `
       <div class="bg-zinc-800 border border-zinc-700 p-4 rounded-xl relative space-y-3 mb-3 shadow-lg">
         
@@ -839,25 +874,24 @@ function renderAiReviewList() {
           
           <div class="relative">
             <span class="absolute left-2.5 top-2.5 text-xs text-zinc-500 font-bold">Rp</span>
-            <input type="number" value="${t.amount}" onchange="updateAiDraft('${t.id}', 'amount', this.value)" class="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-2 pl-8 text-xs text-white font-bold focus:ring-1 focus:ring-indigo-500 outline-none transition-colors" placeholder="Nominal">
+            <input type="number" value="${t.amount}" onchange="updateAiDraft('${t.id}', 'amount', this.value)" class="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-2 pl-8 text-xs font-bold ${amountClass} focus:ring-1 focus:ring-indigo-500 outline-none transition-colors" placeholder="Nominal">
           </div>
         </div>
 
         <div class="grid grid-cols-3 gap-2">
-          <select onchange="updateAiDraft('${t.id}', 'type', this.value)" class="bg-zinc-900 border border-zinc-600 rounded-lg p-2 text-[10px] sm:text-xs text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none">
+          <select onchange="updateAiDraft('${t.id}', 'type', this.value)" class="bg-zinc-900 border border-zinc-600 rounded-lg p-2 text-[10px] sm:text-xs text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none" title="Tipe Transaksi">
             <option value="out" ${t.type === 'out' ? 'selected' : ''}>Keluar (-)</option>
             <option value="in" ${t.type === 'in' ? 'selected' : ''}>Masuk (+)</option>
+            <option value="transfer" ${t.type === 'transfer' ? 'selected' : ''}>Transfer</option>
           </select>
 
-          <select onchange="updateAiDraft('${t.id}', 'method', this.value)" class="bg-zinc-900 border border-zinc-600 rounded-lg p-2 text-[10px] sm:text-xs text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none">
+          <select onchange="updateAiDraft('${t.id}', 'method', this.value)" class="bg-zinc-900 border border-zinc-600 rounded-lg p-2 text-[10px] sm:text-xs text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none" title="${isTransfer ? 'Asal Dana' : 'Metode'}">
             <option value="Cash" ${t.method === 'Cash' ? 'selected' : ''}>Cash</option>
             <option value="BCA" ${t.method === 'BCA' ? 'selected' : ''}>BCA</option>
             <option value="Dana" ${t.method === 'Dana' ? 'selected' : ''}>Dana</option>
           </select>
 
-          <select onchange="updateAiDraft('${t.id}', 'category', this.value)" class="bg-zinc-900 border border-zinc-600 rounded-lg p-2 text-[10px] sm:text-xs text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none">
-            ${getCategoryOptionsHTML(t.category)}
-          </select>
+          ${thirdColumnHTML}
         </div>
 
       </div>
@@ -867,19 +901,24 @@ function renderAiReviewList() {
   lucide.createIcons();
 }
 
-// Fungsi untuk menyimpan perubahan yang diketik ke memori sementara (Draft)
+// Fungsi Update Draft
 window.updateAiDraft = (id, field, value) => {
   const index = aiDraftTransactions.findIndex(t => t.id === id);
   if (index !== -1) {
     aiDraftTransactions[index][field] = value;
+    
+    // Jika yang diubah adalah 'type' (misal dari Keluar jadi Transfer),
+    // kita wajib merender ulang list-nya agar dropdown Kategori berubah jadi Tujuan Transfer
+    if (field === 'type') {
+      renderAiReviewList();
+    }
   }
 };
 
-// Fungsi Hapus baris hasil "Halu" AI sebelum disave
+// Fungsi Hapus baris hasil AI
 window.removeAiDraft = (id) => {
   aiDraftTransactions = aiDraftTransactions.filter(t => t.id !== id);
   if (aiDraftTransactions.length === 0) {
-    // Jika semua dihapus, kembali ke mode input
     viewAiReview.classList.replace('flex', 'hidden');
     viewAiInput.classList.replace('hidden', 'block');
   } else {
@@ -887,17 +926,24 @@ window.removeAiDraft = (id) => {
   }
 };
 
-// SIMPAN SEMUA TRANSAKSI DARI AI KE FIRESTORE
+// SIMPAN SEMUA TRANSAKSI DARI AI KE FIRESTORE (DENGAN TRANSFER)
 if (btnAiSaveAll) {
-  btnAiSaveAll.addEventListener('click', async () => {
+  // Pastikan event listener lama dihapus atau Anda hanya mengganti isi fungsinya
+  // agar tidak ter-klik 2x. Cara paling aman, ganti blok kodenya:
+  btnAiSaveAll.onclick = async () => {
     const originalText = btnAiSaveAll.innerHTML;
     btnAiSaveAll.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Menyimpan...`;
     btnAiSaveAll.disabled = true;
 
     try {
-      // Kita loop dan simpan satu-satu ke Firestore
-      // menggunakan Promise.all agar berjalan bersamaan (lebih cepat)
       await Promise.all(aiDraftTransactions.map(async (t) => {
+        const isTransfer = t.type === 'transfer';
+        
+        // Cek validasi kalau transfer tapi dompet asal & tujuan sama
+        if (isTransfer && t.method === t.transferTo) {
+          throw new Error(`Asal dana dan Tujuan Transfer tidak boleh sama (${t.note})`);
+        }
+
         const transactionData = {
           userId: currentUser.uid, 
           type: t.type,
@@ -905,32 +951,35 @@ if (btnAiSaveAll) {
           amount: parseFloat(t.amount),
           note: t.note,
           method: t.method,
-          category: t.category,
+          category: isTransfer ? 'Transfer Internal' : t.category,
           timestamp: new Date().toISOString()
         };
+
+        // Jika tipenya transfer, kita suntikkan properti transferTo ke Firebase
+        if (isTransfer) {
+          transactionData.transferTo = t.transferTo;
+        }
+
         await addDoc(collection(db, "transactions"), transactionData);
       }));
 
-      // Jika berhasil semua:
-      aiPromptInput.value = ""; // Bersihkan teks
-      if (btnAiClearImage) btnAiClearImage.click(); // Bersihkan gambar
-      btnCloseModal.click(); // Tutup modal
-      
-      // Kembalikan tombol mode AI ke state awal (Manual Form)
+      aiPromptInput.value = ""; 
+      if (btnAiClearImage) btnAiClearImage.click(); 
+      btnCloseModal.click(); 
       btnToggleAiInput.click(); 
-      
       alert(`Sukses! ${aiDraftTransactions.length} transaksi berhasil dicatat.`);
       
     } catch (error) {
       console.error(error);
-      alert("Gagal menyimpan ke database. Cek koneksi Anda.");
+      alert(error.message || "Gagal menyimpan ke database. Cek koneksi Anda.");
     } finally {
       btnAiSaveAll.innerHTML = originalText;
       btnAiSaveAll.disabled = false;
       lucide.createIcons();
     }
-  });
+  };
 }
+
 
 
 
