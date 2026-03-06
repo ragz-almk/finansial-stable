@@ -500,26 +500,57 @@ if (transactionForm) {
   });
 }
 
-// FITUR TAMPIL/SEMBUNYIKAN RENCANA VS REALITA
+// ======================================================
+// FITUR TAMPIL/SEMBUNYIKAN KOTAK (DENGAN LOCAL STORAGE)
+// ======================================================
+
+// 1. RENCANA VS REALITA
 const toggleBudgetBtn = document.getElementById('toggleBudgetBtn');
 const budgetToggleIcon = document.getElementById('budgetToggleIcon');
+// (budgetContainer sudah dipanggil di bagian atas script)
+
+// Cek memori browser saat pertama dimuat
+if (localStorage.getItem('budgetToggleState') === 'hidden') {
+  budgetContainer.classList.add('hidden');
+  if(budgetToggleIcon) budgetToggleIcon.classList.add('rotate-180');
+}
 
 if (toggleBudgetBtn) {
   toggleBudgetBtn.addEventListener('click', () => {
     budgetContainer.classList.toggle('hidden');
     budgetToggleIcon.classList.toggle('rotate-180');
+    
+    // Simpan status terbaru ke memori browser
+    if (budgetContainer.classList.contains('hidden')) {
+      localStorage.setItem('budgetToggleState', 'hidden');
+    } else {
+      localStorage.setItem('budgetToggleState', 'visible');
+    }
   });
 }
 
-// FITUR TAMPIL/SEMBUNYIKAN FORMULA 50/30/20
+// 2. FORMULA 50/30/20
 const toggleRuleBtn = document.getElementById('toggleRuleBtn');
 const ruleToggleIcon = document.getElementById('ruleToggleIcon');
 const ruleContainer = document.getElementById('ruleContainer');
+
+// Cek memori browser saat pertama dimuat
+if (localStorage.getItem('ruleToggleState') === 'hidden') {
+  if(ruleContainer) ruleContainer.classList.add('hidden');
+  if(ruleToggleIcon) ruleToggleIcon.classList.add('rotate-180');
+}
 
 if (toggleRuleBtn && ruleContainer) {
   toggleRuleBtn.addEventListener('click', () => {
     ruleContainer.classList.toggle('hidden');
     ruleToggleIcon.classList.toggle('rotate-180');
+    
+    // Simpan status terbaru ke memori browser
+    if (ruleContainer.classList.contains('hidden')) {
+      localStorage.setItem('ruleToggleState', 'hidden');
+    } else {
+      localStorage.setItem('ruleToggleState', 'visible');
+    }
   });
 }
 
@@ -649,4 +680,5 @@ if (btnAnalyzeAI) {
     }
   });
 }
+
 
