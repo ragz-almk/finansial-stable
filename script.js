@@ -555,11 +555,8 @@ if (toggleRuleBtn && ruleContainer) {
 }
 
 // ==========================================
-// FITUR AI FINANCIAL ADVISOR (GEMINI)
+// FITUR AI FINANCIAL ADVISOR (VERCEL BACKEND)
 // ==========================================
-
-// Ganti dengan API Key dari Google AI Studio milikmu
-const GEMINI_API_KEY = "AIzaSyAUGMyjx5EZD4oceuaIq8LYpMjkeHd6nJQ"; 
 
 const modalAI = document.getElementById('modalAI');
 const btnOpenAI = document.getElementById('btnOpenAI');
@@ -573,7 +570,6 @@ if (btnOpenAI) {
   btnOpenAI.addEventListener('click', () => {
     modalAI.classList.remove('hidden');
     modalAI.classList.add('flex');
-    // Reset tampilan
     aiResponse.classList.add('hidden');
     aiLoading.classList.add('hidden');
     aiResponse.innerHTML = '';
@@ -590,13 +586,9 @@ if (btnCloseAI) {
 // Fungsi Analisis AI
 if (btnAnalyzeAI) {
   btnAnalyzeAI.addEventListener('click', async () => {
-    // 1. Ambil bulan yang sedang dipilih
     const selectedMonth = document.getElementById('monthFilter').value; 
-    
-    // 2. Filter transaksi HANYA untuk bulan ini
     const monthTxns = transactions.filter(t => t.date.substring(0, 7) === selectedMonth);
     
-    // 3. Hitung ringkasan
     let totalMasuk = 0;
     let totalKeluar = 0;
     let rincianKategori = {};
@@ -609,16 +601,13 @@ if (btnAnalyzeAI) {
       }
     });
 
-    // Ubah rincian kategori jadi teks
     let teksKategori = "";
     for (const [kat, nom] of Object.entries(rincianKategori)) {
       teksKategori += `- ${kat}: Rp ${formatRp(nom)}\n`;
     }
 
-    // 4. Buat Prompt (Instruksi + Kepribadian AI)
-    // Silakan ubah bagian "Kamu adalah..." sesuai dengan kepribadian yang Anda inginkan!
     const promptData = `
-      Kamu adalah Xylia seorang penasihat keuangan yang cerdas, agak sarkas, tapi sangat peduli. Kamu suka memberikan komentar yang menohok namun membangun. Gunakan bahasa Indonesia yang santai (gunakan panggilan Anda ke pada user).
+      Kamu adalah seorang penasihat keuangan yang cerdas, agak sarkas, tapi sangat peduli. Kamu suka memberikan komentar yang menohok namun membangun. Gunakan bahasa gaul Indonesia yang santai (seperti 'lu', 'gue', 'bro', 'sis').
       
       Berikut adalah data keuangan klienmu untuk bulan ${selectedMonth}:
       Total Pemasukan: Rp ${formatRp(totalMasuk)}
@@ -635,34 +624,29 @@ if (btnAnalyzeAI) {
       Jangan gunakan format markdown berlebihan, gunakan paragraf biasa saja.
     `;
 
-    // 5. Tampilkan UI Loading
     aiResponse.classList.add('hidden');
     aiLoading.classList.remove('hidden');
     btnAnalyzeAI.disabled = true;
     btnAnalyzeAI.classList.add('opacity-50', 'cursor-not-allowed');
 
     try {
-      // 6. Panggil Google Gemini API
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      // PERUBAHAN UTAMA: Kita memanggil folder /api/gemini milik Vercel kita sendiri
+      const response = await fetch('/api/gemini', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: promptData }]
-          }]
-        })
+        body: JSON.stringify({ prompt: promptData })
       });
 
-      if (!response.ok) throw new Error("Gagal terhubung ke AI");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Gagal terhubung ke server Vercel");
+      }
 
       const data = await response.json();
-      
-      // Ambil teks balasan dari JSON Google
       const replyText = data.candidates[0].content.parts[0].text;
 
-      // 7. Tampilkan hasil
       aiLoading.classList.add('hidden');
       aiResponse.classList.remove('hidden');
       aiResponse.innerText = replyText;
@@ -673,12 +657,12 @@ if (btnAnalyzeAI) {
       aiResponse.classList.remove('hidden');
       aiResponse.innerText = "Duh, AI-nya lagi sibuk ngitung duit negara. Coba lagi nanti ya! (" + error.message + ")";
     } finally {
-      // Kembalikan tombol ke keadaan semula
       btnAnalyzeAI.disabled = false;
       btnAnalyzeAI.classList.remove('opacity-50', 'cursor-not-allowed');
-      lucide.createIcons(); // Refresh icon just in case
+      lucide.createIcons();
     }
   });
 }
+
 
 
