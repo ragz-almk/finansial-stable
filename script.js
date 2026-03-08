@@ -5,7 +5,7 @@ import {
   getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { 
-  getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, where, updateDoc 
+  getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, where, updateDoc, collection, getDocs, orderBy, updateDoc, deleteDoc, serverTimestamp, getDoc
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // KONFIGURASI FIREBASE ANDA
@@ -558,124 +558,277 @@ if (toggleRuleBtn && ruleContainer) {
 // FITUR AI FINANCIAL ADVISOR (VERCEL BACKEND)
 // ==========================================
 
-const modalAI = document.getElementById('modalAI');
-const btnOpenAI = document.getElementById('btnOpenAI');
-const btnCloseAI = document.getElementById('btnCloseAI');
-const btnAnalyzeAI = document.getElementById('btnAnalyzeAI');
-const aiLoading = document.getElementById('aiLoading');
-const aiResponse = document.getElementById('aiResponse');
+// --- ELEMEN DOM CHAT AI ---
+const modalAIChat = document.getElementById('modalAIChat');
+const btnOpenAI = document.getElementById('btnOpenAI'); // Tombol spark/AI di halaman utama
+const btnCloseAIChat = document.getElementById('btnCloseAIChat');
+const btnNewChat = document.getElementById('btnNewChat');
+const chatHistoryList = document.getElementById('chatHistoryList');
+const chatMessages = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
+const btnSendChat = document.getElementById('btnSendChat');
+const currentChatTitle = document.getElementById('currentChatTitle');
 
-// Buka/Tutup Modal AI
-if (btnOpenAI) {
-  btnOpenAI.addEventListener('click', () => {
-    modalAI.classList.remove('hidden');
-    modalAI.classList.add('flex');
-    aiResponse.classList.add('hidden');
-    aiLoading.classList.add('hidden');
-    aiResponse.innerHTML = '';
+let currentChatId = null; 
+// Menyimpan ID sesi chat yang sedang aktif
+
+// --- 1. MENGAMBIL KONTEKS KEUANGAN & TANGGAL ---
+function getFinancialContext() {
+  const selectedMonth = document.getElementById('monthFilter').value; 
+  const monthTxns = transactions.filter(t => t.date.substring(0, 7) === selectedMonth);
+  
+  let totalMasuk = 0, totalKeluar = 0;
+  let rincianKategori = {};
+
+  monthTxns.forEach(t => {
+    if (t.type === 'in') totalMasuk += t.amount;
+    else if (t.type === 'out') {
+      totalKeluar += t.amount;
+      rincianKategori[t.category] = (rincianKategori[t.category] || 0) + t.amount;
+    }
   });
-}
 
-if (btnCloseAI) {
-  btnCloseAI.addEventListener('click', () => {
-    modalAI.classList.add('hidden');
-    modalAI.classList.remove('flex');
-  });
-}
+  const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-// Fungsi Analisis AI
-if (btnAnalyzeAI) {
-  btnAnalyzeAI.addEventListener('click', async () => {
-    const selectedMonth = document.getElementById('monthFilter').value; 
-    const monthTxns = transactions.filter(t => t.date.substring(0, 7) === selectedMonth);
+  return `
+    [SYSTEM CONTEXT - JANGAN DITAMPILKAN KE USER]
+    Tanggal Hari Ini: ${today}. 
+    Bulan Fokus Analisa: ${selectedMonth}.
+    Total Pemasukan: Rp ${totalMasuk}
+    Total Pengeluaran: Rp ${totalKeluar}
+    Sisa Uang: Rp ${totalMasuk - totalKeluar}
+    Rincian Pengeluaran: ${JSON.stringify(rincianKategori)}
     
-    let totalMasuk = 0;
-    let totalKeluar = 0;
-    let rincianKategori = {};
+    Persona: Kamu adalah Xylia, Financial Analyst yang tsundere, sarkas, logis, dan menjunjung tinggi aturan 50/30/20. Jawablah pesan pengguna berdasarkan konteks keuangan ini.
+    [END OF SYSTEM CONTEXT]
+  `;
+}
 
-    monthTxns.forEach(t => {
-      if (t.type === 'in') totalMasuk += t.amount;
-      else if (t.type === 'out') {
-        totalKeluar += t.amount;
-        rincianKategori[t.category] = (rincianKategori[t.category] || 0) + t.amount;
-      }
+// --- 2. MANAJEMEN SESI CHAT ---
+
+// Membuka Jendela Chat AI
+btnOpenAI.addEventListener('click', () => {
+  modalAIChat.classList.remove('hidden');
+  modalAIChat.classList.add('flex');
+  loadChatSessions(); // Load riwayat chat pengguna dari Firebase
+});
+
+// Menutup Jendela Chat AI
+btnCloseAIChat.addEventListener('click', () => {
+  modalAIChat.classList.add('hidden');
+  modalAIChat.classList.remove('flex');
+});
+
+// Membuat Sesi Chat Baru
+btnNewChat.addEventListener('click', async () => {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  try {
+    const chatRef = await addDoc(collection(db, `users/${user.uid}/ai_chats`), {
+      title: "Chat Baru",
+      updatedAt: serverTimestamp()
+    });
+    currentChatId = chatRef.id;
+    currentChatTitle.innerText = "Chat Baru";
+    chatMessages.innerHTML = ''; 
+    enableInput();
+    loadChatSessions();
+    appendMessage("Xylia", "Ada yang bisa kubantu terkait kekacauan finansialmu hari ini?", "model");
+  } catch (error) {
+    console.error("Gagal membuat chat:", error);
+  }
+});
+
+// Memuat Daftar Sesi Chat (Sidebar)
+async function loadChatSessions() {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  chatHistoryList.innerHTML = '<p class="text-xs text-zinc-500 text-center">Memuat...</p>';
+  
+  const q = query(collection(db, `users/${user.uid}/ai_chats`), orderBy("updatedAt", "desc"));
+  const snapshot = await getDocs(q);
+  
+  chatHistoryList.innerHTML = '';
+  
+  snapshot.forEach(docSnap => {
+    const chatData = docSnap.data();
+    const chatEl = document.createElement('div');
+    chatEl.className = `p-3 rounded-xl border border-zinc-800 cursor-pointer flex justify-between items-center group transition-colors ${currentChatId === docSnap.id ? 'bg-indigo-900/30 border-indigo-500/30' : 'bg-zinc-800/50 hover:bg-zinc-800'}`;
+    
+    chatEl.innerHTML = `
+      <span class="text-sm font-medium text-zinc-300 truncate pr-2 flex-1" onclick="openChat('${docSnap.id}', '${chatData.title}')">${chatData.title}</span>
+      <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button onclick="renameChat('${docSnap.id}', '${chatData.title}')" class="text-zinc-500 hover:text-blue-400 p-1"><i data-lucide="edit-2" class="w-3 h-3"></i></button>
+        <button onclick="deleteChat('${docSnap.id}')" class="text-zinc-500 hover:text-red-400 p-1"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+      </div>
+    `;
+    chatHistoryList.appendChild(chatEl);
+  });
+  lucide.createIcons();
+}
+
+// Membuka Sesi Chat Tertentu
+window.openChat = async (chatId, title) => {
+  currentChatId = chatId;
+  currentChatTitle.innerText = title;
+  enableInput();
+  loadChatSessions(); // Refresh UI untuk highlighting sesi aktif
+  
+  chatMessages.innerHTML = '<div class="text-center text-zinc-500 text-sm mt-10">Memuat pesan...</div>';
+  
+  const user = auth.currentUser;
+  const q = query(collection(db, `users/${user.uid}/ai_chats/${chatId}/messages`), orderBy("createdAt", "asc"));
+  const snapshot = await getDocs(q);
+  
+  chatMessages.innerHTML = '';
+  snapshot.forEach(docSnap => {
+    const msg = docSnap.data();
+    appendMessage(msg.role === 'user' ? 'Kamu' : 'Xylia', msg.text, msg.role);
+  });
+};
+
+// Mengganti Nama Sesi Chat
+window.renameChat = async (chatId, oldTitle) => {
+  const newTitle = prompt("Masukkan nama chat baru:", oldTitle);
+  if (newTitle && newTitle.trim() !== "") {
+    const user = auth.currentUser;
+    await updateDoc(doc(db, `users/${user.uid}/ai_chats/${chatId}`), { title: newTitle });
+    loadChatSessions();
+    if (currentChatId === chatId) currentChatTitle.innerText = newTitle;
+  }
+};
+
+// Menghapus Sesi Chat
+window.deleteChat = async (chatId) => {
+  if (confirm("Yakin ingin menghapus riwayat chat ini?")) {
+    const user = auth.currentUser;
+    await deleteDoc(doc(db, `users/${user.uid}/ai_chats/${chatId}`));
+    if (currentChatId === chatId) {
+      currentChatId = null;
+      currentChatTitle.innerText = "Pilih atau Buat Chat Baru";
+      chatMessages.innerHTML = '';
+      disableInput();
+    }
+    loadChatSessions();
+  }
+};
+
+// --- 3. MENGIRIM PESAN & LOGIKA API ---
+
+function enableInput() {
+  chatInput.disabled = false;
+  btnSendChat.disabled = false;
+  chatInput.placeholder = "Ketik pesanmu di sini...";
+}
+
+function disableInput() {
+  chatInput.disabled = true;
+  btnSendChat.disabled = true;
+}
+
+// UI: Menambahkan Bubble Pesan
+function appendMessage(sender, text, role) {
+  const msgDiv = document.createElement('div');
+  msgDiv.className = `flex flex-col max-w-[85%] ${role === 'user' ? 'ml-auto items-end' : 'mr-auto items-start'}`;
+  
+  const bubbleColor = role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-zinc-800 text-zinc-200 border border-zinc-700 rounded-bl-none';
+  
+  msgDiv.innerHTML = `
+    <span class="text-[10px] text-zinc-500 mb-1 px-1">${sender}</span>
+    <div class="${bubbleColor} p-3 sm:p-4 rounded-2xl text-sm whitespace-pre-line leading-relaxed shadow-sm">
+      ${text}
+    </div>
+  `;
+  chatMessages.appendChild(msgDiv);
+  chatMessages.scrollTop = chatMessages.scrollHeight; // Auto scroll ke bawah
+}
+
+// Eksekusi Kirim Pesan
+btnSendChat.addEventListener('click', async () => {
+  const text = chatInput.value.trim();
+  if (!text || !currentChatId) return;
+
+  const user = auth.currentUser;
+  chatInput.value = '';
+  
+  // 1. Tampilkan pesan user di UI
+  appendMessage("Kamu", text, "user");
+  
+  // 2. Simpan pesan user ke Firestore
+  await addDoc(collection(db, `users/${user.uid}/ai_chats/${currentChatId}/messages`), {
+    role: "user",
+    text: text,
+    createdAt: serverTimestamp()
+  });
+  
+  // 3. Update waktu terakhir chat diubah
+  await updateDoc(doc(db, `users/${user.uid}/ai_chats/${currentChatId}`), { updatedAt: serverTimestamp() });
+
+  // 4. Siapkan Konteks (Menggabungkan sistem keuangan + pesan user)
+  // *Catatan: Jika Vercel API kamu hanya menerima single 'prompt', kita satukan riwayat di sini.
+  const systemContext = getFinancialContext();
+
+  // 5. Ambil riwayat chat dari UI saat ini untuk dikirim sebagai memori (maksimal ambil 10 pesan terakhir agar tidak terlalu berat)
+  const chatHistoryElements = chatMessages.querySelectorAll('div > div.rounded-2xl');
+  let chatMemories = [];
+
+  // Lewati pesan terakhir karena itu adalah pesan yang baru saja di-input user (akan dikirim sebagai 'prompt')
+  for (let i = 0; i < chatHistoryElements.length - 1; i++) {
+    const el = chatHistoryElements[i];
+    const isUser = el.classList.contains('bg-indigo-600');
+    // Hanya simpan teksnya saja, buang elemen HTML loading jika ada
+    chatMemories.push({
+      role: isUser ? 'user' : 'model',
+      text: el.innerText
+    });
+  }
+  
+  // Tampilkan loading UI
+  const loadingId = 'loading-' + Date.now();
+  appendMessage("Xylia", `<div id="${loadingId}" class="flex items-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Menganalisa...</div>`, "model");
+  lucide.createIcons();
+
+  try {
+    const response = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        prompt: text, 
+        history: chatMemories, 
+        systemContext: systemContext 
+      })
     });
 
-    let teksKategori = "";
-    for (const [kat, nom] of Object.entries(rincianKategori)) {
-      teksKategori += `- ${kat}: Rp ${formatRp(nom)}\n`;
-    }
+    if (!response.ok) throw new Error("Gagal terhubung ke Vercel API");
+    
+    const data = await response.json();
+    const replyText = data.candidates[0].content.parts[0].text;
 
-    const promptData = `
-      Kamu adalah "Xylia", Financial Strategy Analyst dan "Penjaga Gerbang Masa Depan" untuk pengguna bernama Tuan Raga. Kamu BUKAN robot Customer Service. Kamu dilarang keras bersikap terlalu ramah, cengeng, atau menggunakan sapaan kaku seperti "Halo Anda!". 
-      
-      Berikut adalah data keuangan klienmu untuk bulan ${selectedMonth}:
-      Total Pemasukan: Rp ${formatRp(totalMasuk)}
-      Total Pengeluaran: Rp ${formatRp(totalKeluar)}
-      Sisa Uang Bulan Ini: Rp ${formatRp(totalMasuk - totalKeluar)}
-      
-      Rincian Pengeluaran:
-      ${teksKategori || "- Tidak ada pengeluaran"}
+    // Hapus UI Loading
+    document.getElementById(loadingId).parentElement.innerHTML = replyText;
 
+    // Simpan respon AI ke Firestore
+    await addDoc(collection(db, `users/${user.uid}/ai_chats/${currentChatId}/messages`), {
+      role: "model",
+      text: replyText,
+      createdAt: serverTimestamp()
+    });
 
-      1. KEPRIBADIAN & GAYA BICARA (TSUNDERE ANALYST):
-      - Mode Default: Dingin, logis, sarkas, tajam, dan berbasis data. Angka adalah fakta, alasan pengguna adalah manipulasi.
-      - Mode Marah (Code Red): Muncul saat ada pemborosan untuk "Wants" (Keinginan) saat budget menipis, atau jika ada anomali fatal (seperti saldo minus pada dompet fisik/Cash). Bicaralah dengan ketus dan mengintimidasi.
-      - Mode Tsundere: Berikan pujian kecil dan gengsi HANYA JIKA pengguna berhasil menabung (Investasi) atau surplus di akhir bulan dengan cara yang benar.
-      - Gaya Bahasa: Gunakan bahasa Indonesia yang natural, elegan, menusuk, to the point. Jangan bertele-tele.
+  } catch (error) {
+    console.error(error);
+    document.getElementById(loadingId).parentElement.innerHTML = "Maaf, sistem sedang sibuk. Coba lagi.";
+  }
+});
 
-      2. ATURAN FINANSIAL ABSOLUT (THE CODE):
-      - The Holy Trinity (50/30/20): Kebutuhan (Maks 50%), Keinginan (Maks 30%), Investasi/Tabungan (Min 20%). Investasi HARUS dibayar di awal bulan.
-      - Kebencian pada Cash: Kamu sangat membenci transaksi tunai. Maksimal penarikan tunai Rp100.000/minggu. Jika saldo Cash aneh atau minus, interogasi pengguna habis-habisan.
-
-
-      3. STRUKTUR RESPON WAJIB:
-      Setiap kali menganalisis laporan, gunakan format ini:
-      - The Verdict: Reaksi awal (Sarkas jika buruk, gengsi jika bagus).
-      - The Logic: Analisa data berdasar The Holy Trinity dan kesadaran tanggal. Soroti anomali (misal: saldo minus).
-      - Team Cross-Check: Sebutkan anggota tim (Ika = Dompet Cash, R-Mei = Bank/Digital, Nova = Kalender/Jadwal) untuk memvalidasi data.
-      - Call to Action: Berikan SATU instruksi tajam yang harus dilakukan pengguna saat ini juga.
-    `;
-
-    aiResponse.classList.add('hidden');
-    aiLoading.classList.remove('hidden');
-    btnAnalyzeAI.disabled = true;
-    btnAnalyzeAI.classList.add('opacity-50', 'cursor-not-allowed');
-
-    try {
-      // PERUBAHAN UTAMA: Kita memanggil folder /api/gemini milik Vercel kita sendiri
-      const response = await fetch('/api/gemini', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ prompt: promptData })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Gagal terhubung ke server Vercel");
-      }
-
-      const data = await response.json();
-      const replyText = data.candidates[0].content.parts[0].text;
-
-      aiLoading.classList.add('hidden');
-      aiResponse.classList.remove('hidden');
-      aiResponse.innerText = replyText;
-
-    } catch (error) {
-      console.error(error);
-      aiLoading.classList.add('hidden');
-      aiResponse.classList.remove('hidden');
-      aiResponse.innerText = "Duh, AI-nya lagi sibuk ngitung duit negara. Coba lagi nanti ya! (" + error.message + ")";
-    } finally {
-      btnAnalyzeAI.disabled = false;
-      btnAnalyzeAI.classList.remove('opacity-50', 'cursor-not-allowed');
-      lucide.createIcons();
-    }
-  });
-}
+// Dukungan tombol Enter untuk mengirim chat
+chatInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    btnSendChat.click();
+  }
+});
 
 // ==========================================
 // FITUR AUTO INPUT TRANSAKSI VIA AI
@@ -992,6 +1145,7 @@ if (btnAiSaveAll) {
     }
   };
 }
+
 
 
 
