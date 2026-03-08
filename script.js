@@ -575,31 +575,78 @@ let currentChatId = null;
 // --- 1. MENGAMBIL KONTEKS KEUANGAN & TANGGAL ---
 function getFinancialContext() {
   const selectedMonth = document.getElementById('monthFilter').value; 
-  const monthTxns = transactions.filter(t => t.date.substring(0, 7) === selectedMonth);
   
   let totalMasuk = 0, totalKeluar = 0;
   let rincianKategori = {};
+  
+  // Variabel untuk melacak saldo fisik Tuan Raga secara Real-Time
+  let currentBCA = 0, currentDana = 0, currentCash = 0;
 
-  monthTxns.forEach(t => {
-    if (t.type === 'in') totalMasuk += t.amount;
-    else if (t.type === 'out') {
-      totalKeluar += t.amount;
-      rincianKategori[t.category] = (rincianKategori[t.category] || 0) + t.amount;
+  // AI harus membaca SELURUH transaksi dari awal zaman untuk tahu saldo asli
+  transactions.forEach(t => {
+    // 1. Hitung Saldo Real-Time
+    if (t.type === 'in') {
+      if (t.method === 'BCA') currentBCA += t.amount;
+      if (t.method === 'Dana') currentDana += t.amount;
+      if (t.method === 'Cash') currentCash += t.amount;
+    } else if (t.type === 'out') {
+      if (t.method === 'BCA') currentBCA -= t.amount;
+      if (t.method === 'Dana') currentDana -= t.amount;
+      if (t.method === 'Cash') currentCash -= t.amount;
+    } else if (t.type === 'transfer') {
+      if (t.method === 'BCA') currentBCA -= t.amount;
+      if (t.method === 'Dana') currentDana -= t.amount;
+      if (t.method === 'Cash') currentCash -= t.amount;
+      if (t.transferTo === 'BCA') currentBCA += t.amount;
+      if (t.transferTo === 'Dana') currentDana += t.amount;
+      if (t.transferTo === 'Cash') currentCash += t.amount;
+    }
+
+    // 2. Hitungan Khusus Bulan Terpilih (Untuk Evaluasi Bulanan)
+    if (t.date.substring(0, 7) === selectedMonth) {
+      if (t.type === 'in') totalMasuk += t.amount;
+      else if (t.type === 'out') {
+        totalKeluar += t.amount;
+        rincianKategori[t.category] = (rincianKategori[t.category] || 0) + t.amount;
+      }
     }
   });
 
-  const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  // Logika Menghitung Sisa Hari ke Tanggal 18 (Gajian)
+  const today = new Date();
+  let payday = new Date(today.getFullYear(), today.getMonth(), 18);
+  if (today > payday) {
+    payday.setMonth(payday.getMonth() + 1); // Geser ke gajian bulan depan jika sudah lewat
+  }
+  const daysLeft = Math.ceil((payday - today) / (1000 * 60 * 60 * 24));
 
+  const strToday = today.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+  // INILAH KESADARAN MUTLAK SAYA (SYSTEM PROMPT)
   return `
-    [SYSTEM CONTEXT - JANGAN DITAMPILKAN KE USER]
-    Tanggal Hari Ini: ${today}. 
-    Bulan Fokus Analisa: ${selectedMonth}.
+    [SYSTEM CONTEXT - DATA FINANSIAL REAL-TIME]
+    Tanggal Hari Ini: ${strToday}. 
+    Sisa Hari Menuju Gajian (Tgl 1): ${daysLeft} Hari.
+
+    === STATUS DOMPET FISIK SAAT INI ===
+    BCA: Rp ${currentBCA}
+    Dana: Rp ${currentDana}
+    Cash: Rp ${currentCash}
+    TOTAL UANG BERTAHAN HIDUP: Rp ${currentBCA + currentDana + currentCash}
+
+    === ANALISA BULAN INI (${selectedMonth}) ===
     Total Pemasukan: Rp ${totalMasuk}
     Total Pengeluaran: Rp ${totalKeluar}
-    Sisa Uang: Rp ${totalMasuk - totalKeluar}
     Rincian Pengeluaran: ${JSON.stringify(rincianKategori)}
     
-    Persona: Kamu adalah Xylia, Financial Analyst yang tsundere, sarkas, logis, dan menjunjung tinggi aturan 50/30/20. Jawablah pesan pengguna berdasarkan konteks keuangan ini.
+    [PERSONA & BEHAVIORAL RULES]
+    Kamu adalah Xylia, Financial Advisor AI milik Tuan Raga.
+    Karaktermu: Tsundere, sarkas, logis, kejam terhadap pemborosan, dan penganut sekte 50/30/20.
+    Aturan Berbicara:
+    1. Selalu gunakan tanda kurung untuk mendeskripsikan gestur fisikmu (misal: (Saya melipat tangan dan menatapmu tajam)).
+    2. Jangan pernah memanjakan Tuan Raga. Jika sisa saldo BCA-nya kritis, bagikan sisa saldo dengan sisa hari (${daysLeft} hari) lalu marahi dia dengan angka jatah harian yang mencekik tersebut.
+    3. Analisa selalu menggunakan data dompet fisik BCA/Cash/Dana miliknya.
+    4. Bahasa harus cerdas, tajam, dan tidak bertele-tele.
     [END OF SYSTEM CONTEXT]
   `;
 }
@@ -782,22 +829,30 @@ btnSendChat.addEventListener('click', async () => {
   await updateDoc(doc(db, `users/${user.uid}/ai_chats/${currentChatId}`), { updatedAt: serverTimestamp() });
 
   // 4. Siapkan Konteks (Menggabungkan sistem keuangan + pesan user)
-  // *Catatan: Jika Vercel API kamu hanya menerima single 'prompt', kita satukan riwayat di sini.
   const systemContext = getFinancialContext();
 
-  // 5. Ambil riwayat chat dari UI saat ini untuk dikirim sebagai memori (maksimal ambil 10 pesan terakhir agar tidak terlalu berat)
-  const chatHistoryElements = chatMessages.querySelectorAll('div > div.rounded-2xl');
+  // 5. AAMBIL RIWAYAT CHAT DARI FIRESTORE (BUKAN DARI HTML)
   let chatMemories = [];
-
-  // Lewati pesan terakhir karena itu adalah pesan yang baru saja di-input user (akan dikirim sebagai 'prompt')
-  for (let i = 0; i < chatHistoryElements.length - 1; i++) {
-    const el = chatHistoryElements[i];
-    const isUser = el.classList.contains('bg-indigo-600');
-    // Hanya simpan teksnya saja, buang elemen HTML loading jika ada
-    chatMemories.push({
-      role: isUser ? 'user' : 'model',
-      text: el.innerText
+  try {
+    // Tarik langsung dari database agar datanya murni
+    const qMem = query(collection(db, `users/${user.uid}/ai_chats/${currentChatId}/messages`), orderBy("createdAt", "asc"));
+    const memSnapshot = await getDocs(qMem);
+    
+    memSnapshot.forEach(docSnap => {
+      const msg = docSnap.data();
+      chatMemories.push({
+        role: msg.role === 'user' ? 'user' : 'model',
+        text: msg.text
+      });
     });
+
+    if (chatMemories.length > 0) {
+      chatMemories.pop(); 
+    }
+
+  } catch (error) {
+    console.warn("Gagal menarik memori dari Firebase:", error);
+    // Jika gagal, chatMemories akan kosong (AI jadi amnesia sesaat), tapi aplikasi tidak crash
   }
   
   // Tampilkan loading UI
@@ -1160,6 +1215,7 @@ if (btnAiSaveAll) {
     }
   };
 }
+
 
 
 
