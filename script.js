@@ -622,7 +622,10 @@ btnCloseAIChat.addEventListener('click', () => {
 // Membuat Sesi Chat Baru
 btnNewChat.addEventListener('click', async () => {
   const user = auth.currentUser;
-  if (!user) return;
+  if (!user) {
+    alert("Harap login terlebih dahulu.");
+    return;
+  }
 
   try {
     const chatRef = await addDoc(collection(db, `users/${user.uid}/ai_chats`), {
@@ -637,6 +640,8 @@ btnNewChat.addEventListener('click', async () => {
     appendMessage("Xylia", "Ada yang bisa kubantu terkait kekacauan finansialmu hari ini?", "model");
   } catch (error) {
     console.error("Gagal membuat chat:", error);
+    // Jika tombol + di klik tapi database menolak, error ini akan muncul!
+    alert("Gagal membuat obrolan baru! Error: " + error.message);
   }
 });
 
@@ -645,28 +650,38 @@ async function loadChatSessions() {
   const user = auth.currentUser;
   if (!user) return;
 
-  chatHistoryList.innerHTML = '<p class="text-xs text-zinc-500 text-center">Memuat...</p>';
+  chatHistoryList.innerHTML = '<p class="text-xs text-zinc-500 text-center mt-4">Memuat...</p>';
   
-  const q = query(collection(db, `users/${user.uid}/ai_chats`), orderBy("updatedAt", "desc"));
-  const snapshot = await getDocs(q);
-  
-  chatHistoryList.innerHTML = '';
-  
-  snapshot.forEach(docSnap => {
-    const chatData = docSnap.data();
-    const chatEl = document.createElement('div');
-    chatEl.className = `p-3 rounded-xl border border-zinc-800 cursor-pointer flex justify-between items-center group transition-colors ${currentChatId === docSnap.id ? 'bg-indigo-900/30 border-indigo-500/30' : 'bg-zinc-800/50 hover:bg-zinc-800'}`;
+  try {
+    const q = query(collection(db, `users/${user.uid}/ai_chats`), orderBy("updatedAt", "desc"));
+    const snapshot = await getDocs(q);
     
-    chatEl.innerHTML = `
-      <span class="text-sm font-medium text-zinc-300 truncate pr-2 flex-1" onclick="openChat('${docSnap.id}', '${chatData.title}')">${chatData.title}</span>
-      <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onclick="renameChat('${docSnap.id}', '${chatData.title}')" class="text-zinc-500 hover:text-blue-400 p-1"><i data-lucide="edit-2" class="w-3 h-3"></i></button>
-        <button onclick="deleteChat('${docSnap.id}')" class="text-zinc-500 hover:text-red-400 p-1"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
-      </div>
-    `;
-    chatHistoryList.appendChild(chatEl);
-  });
-  lucide.createIcons();
+    chatHistoryList.innerHTML = '';
+    
+    if (snapshot.empty) {
+      chatHistoryList.innerHTML = '<p class="text-xs text-zinc-600 text-center mt-4">Belum ada obrolan.</p>';
+      return;
+    }
+
+    snapshot.forEach(docSnap => {
+      const chatData = docSnap.data();
+      const chatEl = document.createElement('div');
+      chatEl.className = `p-3 rounded-xl border border-zinc-800 cursor-pointer flex justify-between items-center group transition-colors ${currentChatId === docSnap.id ? 'bg-indigo-900/30 border-indigo-500/30' : 'bg-zinc-800/50 hover:bg-zinc-800'}`;
+      
+      chatEl.innerHTML = `
+        <span class="text-sm font-medium text-zinc-300 truncate pr-2 flex-1" onclick="openChat('${docSnap.id}', '${chatData.title}')">${chatData.title}</span>
+        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onclick="renameChat('${docSnap.id}', '${chatData.title}')" class="text-zinc-500 hover:text-blue-400 p-1"><i data-lucide="edit-2" class="w-3 h-3"></i></button>
+          <button onclick="deleteChat('${docSnap.id}')" class="text-zinc-500 hover:text-red-400 p-1"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+        </div>
+      `;
+      chatHistoryList.appendChild(chatEl);
+    });
+    lucide.createIcons();
+  } catch (error) {
+    console.error("Gagal memuat histori:", error);
+    chatHistoryList.innerHTML = `<p class="text-xs text-red-500 text-center mt-4">Gagal memuat histori: ${error.message}</p>`;
+  }
 }
 
 // Membuka Sesi Chat Tertentu
@@ -1145,6 +1160,7 @@ if (btnAiSaveAll) {
     }
   };
 }
+
 
 
 
