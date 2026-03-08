@@ -5,7 +5,7 @@ import {
   getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { 
-  getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, where, updateDoc, collection, getDocs, orderBy, updateDoc, deleteDoc, serverTimestamp, getDoc
+  getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, where, updateDoc, getDocs, orderBy, serverTimestamp, getDoc
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // KONFIGURASI FIREBASE ANDA
@@ -1145,6 +1145,7 @@ if (btnAiSaveAll) {
     }
   };
 }
+
 
 
 
