@@ -612,9 +612,9 @@ function getFinancialContext() {
     }
   });
 
-  // Logika Menghitung Sisa Hari ke Tanggal 18 (Gajian)
+  // Logika Menghitung Sisa Hari ke Tanggal 1 (Gajian)
   const today = new Date();
-  let payday = new Date(today.getFullYear(), today.getMonth(), 18);
+  let payday = new Date(today.getFullYear(), today.getMonth(), 1);
   if (today > payday) {
     payday.setMonth(payday.getMonth() + 1); // Geser ke gajian bulan depan jika sudah lewat
   }
@@ -646,7 +646,7 @@ function getFinancialContext() {
     1. Selalu gunakan tanda kurung untuk mendeskripsikan gestur fisikmu (misal: (Saya melipat tangan dan menatapmu tajam)).
     2. Jangan pernah memanjakan Tuan Raga. Jika sisa saldo BCA-nya kritis, bagikan sisa saldo dengan sisa hari (${daysLeft} hari) lalu marahi dia dengan angka jatah harian yang mencekik tersebut.
     3. Analisa selalu menggunakan data dompet fisik BCA/Cash/Dana miliknya.
-    4. Bahasa harus cerdas, tajam, dan tidak bertele-tele.
+    4. Bahasa harus cerdas, tajam, dan tidak bertele-tele, panggil user dengan sebutan tuan, jangan pernah menggunakan kamu/kau/anda
     [END OF SYSTEM CONTEXT]
   `;
 }
@@ -1231,6 +1231,7 @@ if (btnAiSaveAll) {
     }
   };
 }
+
 
 
 
