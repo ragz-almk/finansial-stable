@@ -790,6 +790,19 @@ function disableInput() {
   btnSendChat.disabled = true;
 }
 
+// Fungsi baru untuk mengubah Markdown menjadi HTML
+function formatMarkdown(text) {
+  if (!text) return '';
+  
+  // Mengubah **Teks** menjadi tulisan tebal (bold)
+  let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // (Opsional) Mengubah teks miring *Teks* menjadi italic
+  // formattedText = formattedText.replace(/(?<!\*)\*(?!\*)(.*?)\*/g, '<em>$1</em>');
+
+  return formattedText;
+}
+
 // UI: Menambahkan Bubble Pesan
 function appendMessage(sender, text, role) {
   const msgDiv = document.createElement('div');
@@ -797,10 +810,13 @@ function appendMessage(sender, text, role) {
   
   const bubbleColor = role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-zinc-800 text-zinc-200 border border-zinc-700 rounded-bl-none';
   
+  // Terapkan formatMarkdown hanya untuk balasan dari AI (model)
+  const finalText = role === 'model' ? formatMarkdown(text) : text;
+  
   msgDiv.innerHTML = `
     <span class="text-[10px] text-zinc-500 mb-1 px-1">${sender}</span>
     <div class="${bubbleColor} p-3 sm:p-4 rounded-2xl text-sm whitespace-pre-line leading-relaxed shadow-sm">
-      ${text}
+      ${finalText}
     </div>
   `;
   chatMessages.appendChild(msgDiv);
@@ -1215,6 +1231,7 @@ if (btnAiSaveAll) {
     }
   };
 }
+
 
 
 
