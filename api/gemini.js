@@ -12,25 +12,43 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API Key belum diatur di Vercel.' });
   }
 
-  // Mengambil teks prompt dari script.js kita
-  const { prompt } = req.body;
+  // Menerima pesan baru, riwayat chat, dan konteks sistem dari frontend
+  const { prompt, history = [], systemContext = "" } = req.body;
 
   try {
-    // Memanggil API Google Gemini dari sisi server (Sangat Aman)
+    // 1. Format riwayat chat sesuai standar Gemini API
+    const formattedHistory = history.map(msg => ({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.text }]
+    }));
+
+    // 2. Tambahkan pesan terbaru dari user ke urutan paling bawah
+    formattedHistory.push({
+      role: 'user',
+      parts: [{ text: prompt }]
+    });
+
+    // 3. Susun payload untuk dikirim ke Google
+    const requestBody = {
+      // system_instruction adalah cara resmi memberitahu AI peran/personanya
+      system_instruction: {
+        parts: [{ text: systemContext }]
+      },
+      contents: formattedHistory
+    };
+
+    // Memanggil API Google Gemini
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: prompt }]
-        }]
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
-      throw new Error("Gagal terhubung ke Google AI");
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "Gagal terhubung ke Google AI");
     }
 
     const data = await response.json();
